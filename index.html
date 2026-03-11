@@ -1,1429 +1,1216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>S.A.G.E. v2 — Clinical Trajectory Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' fill='%23000'/><text x='3' y='24' font-family='monospace' font-size='22' fill='%235c94fc'>S</text></svg>">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#000;color:#fff;font-family:'Courier New',monospace;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:8px;image-rendering:pixelated;image-rendering:-moz-crisp-edges;image-rendering:crisp-edges}
-.main-wrap{display:flex;gap:8px;align-items:flex-start;width:100%;max-width:1200px}
-
-/* Left panel — Trajectory */
-.traj-panel{flex:1;min-width:0;background:#000;border:3px solid #c42110;padding:10px 12px;overflow-y:auto;max-height:98vh}
-
-/* Right panel — Console */
-.console-panel{width:340px;flex-shrink:0;background:#000;border:3px solid #5c94fc;padding:10px 12px;max-height:98vh;overflow-y:auto}
-
-/* Responsive: stack on narrow screens */
-@media(max-width:900px){
-.main-wrap{flex-direction:column}
-.traj-panel,.console-panel{width:100%;max-height:none}
-}
-
-/* NES Colors */
-:root{
---red:#f83800;--yellow:#ffa800;--cyan:#00e8d8;--blue:#5c94fc;
---green:#39ff14;--magenta:#fc74fc;--grid:#0a4f0a;--grid-b:#1a7f1a;
---bg:#000;--border:#c42110;--border2:#5c94fc;--dim:#686868
-}
-
-/* Typography */
-.title{text-align:center;font-size:18px;letter-spacing:5px;color:var(--blue);margin-bottom:1px}
-.subtitle{text-align:center;font-size:8px;letter-spacing:2px;color:var(--blue);margin-bottom:4px;opacity:.8}
-.info-line{display:flex;justify-content:space-between;font-size:11px;color:var(--blue);margin-bottom:6px;flex-wrap:wrap;gap:3px}
-.info-line span{white-space:nowrap}
-
-/* Lane containers */
-.lane-wrap{margin-bottom:3px}
-.lane-header{display:flex;justify-content:space-between;align-items:center;font-size:10px;padding:1px 4px;border-bottom:1px solid var(--grid)}
-.lane-header .name{font-weight:bold;letter-spacing:1px}
-.lane-header .score{font-size:11px;font-weight:bold}
-.lane-header .arrow{font-size:13px;margin-left:6px}
-.lane-canvas{width:100%;height:48px;display:block;border:1px solid var(--grid)}
-
-/* Composite */
-.composite-wrap{border:2px solid var(--blue);padding:5px 8px;margin:6px 0}
-.composite-label{font-size:10px;color:var(--blue);letter-spacing:2px;margin-bottom:3px}
-.composite-bar-bg{height:14px;background:#111;border:1px solid var(--grid);position:relative}
-.composite-bar-fill{height:100%;transition:width .5s,background .5s}
-.composite-val{position:absolute;right:4px;top:0;font-size:10px;line-height:14px;color:#fff;font-weight:bold}
-
-/* DATA SPEAKS */
-.data-speaks{text-align:center;font-size:11px;padding:7px;border:2px solid var(--blue);background:#0a0a0a;margin:6px 0;letter-spacing:1px;min-height:36px;transition:border-color .3s,color .3s}
-.data-speaks.critical{color:var(--red);border-color:var(--red);animation:fastpulse .5s infinite}
-.data-speaks.concerning{color:var(--yellow);border-color:var(--yellow);animation:slowpulse 2s infinite}
-.data-speaks.stable{color:var(--cyan);border-color:var(--cyan)}
-.data-speaks.discharge{color:var(--green);border-color:var(--green)}
-@keyframes fastpulse{0%,100%{opacity:.7}50%{opacity:1}}
-@keyframes slowpulse{0%,100%{opacity:.8}50%{opacity:1}}
-
-/* DOL axis */
-.dol-axis{font-size:8px;color:var(--dim);display:flex;justify-content:space-between;padding:0 2px;margin-top:1px}
-
-/* Time range buttons */
-.range-btns{display:flex;gap:4px}
-.range-btns button{background:none;border:1px solid var(--blue);color:var(--blue);font-family:inherit;font-size:9px;padding:1px 6px;cursor:pointer}
-.range-btns button.active{background:var(--blue);color:#000}
-.range-btns button:hover{background:var(--blue);color:#000}
-
-/* Console tabs */
-.tab-bar{display:flex;margin-bottom:12px;border-bottom:2px solid var(--blue)}
-.tab-bar button{flex:1;background:none;border:none;color:var(--dim);font-family:inherit;font-size:11px;padding:6px 0;cursor:pointer;letter-spacing:1px;border-bottom:2px solid transparent;margin-bottom:-2px}
-.tab-bar button.active{color:var(--yellow);border-bottom-color:var(--yellow)}
-.tab-bar button:hover{color:var(--blue)}
-.console-title{text-align:center;font-size:13px;color:var(--blue);margin-bottom:8px;letter-spacing:2px}
-
-/* Form styling */
-.form-section{margin-bottom:6px;border:1px solid #222;padding:5px 6px}
-.form-section-title{font-size:10px;font-weight:bold;letter-spacing:1px;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
-.form-section-title .chevron{transition:transform .2s}
-.form-section-title .chevron.open{transform:rotate(90deg)}
-.form-row{display:flex;gap:6px;margin-bottom:4px;align-items:center;flex-wrap:wrap}
-.form-row label{font-size:9px;color:var(--blue);min-width:45px}
-.form-row input,.form-row select{background:#000;color:var(--blue);border:1px solid var(--blue);padding:2px 4px;font-family:inherit;font-size:10px;width:70px}
-.form-row select{width:90px}
-.form-row input[type=checkbox]{width:auto;accent-color:var(--cyan)}
-.form-notes{width:100%;background:#000;color:var(--blue);border:1px solid var(--blue);padding:4px;font-family:inherit;font-size:10px;resize:vertical;min-height:30px}
-
-/* Buttons */
-button{font-family:'Courier New',monospace;cursor:pointer}
-.btn{background:var(--blue);color:#000;border:none;padding:4px 10px;font-size:11px;font-weight:bold;letter-spacing:1px}
-.btn:hover{background:var(--red)}
-.btn-sm{padding:2px 6px;font-size:9px}
-.btn-red{background:var(--red);color:#fff}
-.btn-green{background:var(--green);color:#000}
-.btn-outline{background:none;border:1px solid var(--blue);color:var(--blue);padding:3px 8px;font-size:9px}
-.btn-outline:hover{background:var(--blue);color:#000}
-
-/* History entries */
-.hist-entry{border:1px solid #222;padding:6px;margin-bottom:6px;font-size:10px;cursor:pointer;transition:border-color .2s}
-.hist-entry:hover{border-color:var(--blue)}
-.hist-entry.active{border-color:var(--yellow);box-shadow:0 0 6px rgba(255,168,0,.3)}
-.hist-header{display:flex;justify-content:space-between;margin-bottom:4px;color:var(--yellow)}
-.hist-scores{display:flex;gap:6px;flex-wrap:wrap}
-.hist-scores span{font-size:9px}
-.hist-controls{display:flex;gap:6px;margin-top:4px}
-
-/* Import */
-.import-area{width:100%;height:120px;background:#000;color:var(--green);border:1px solid var(--green);font-family:inherit;font-size:10px;padding:6px;resize:vertical}
-.import-preview{max-height:200px;overflow:auto;font-size:9px;border:1px solid var(--dim);padding:6px;margin:8px 0}
-.import-preview table{width:100%;border-collapse:collapse}
-.import-preview th{background:#111;color:var(--blue);text-align:left;padding:2px 4px;font-size:8px;border:1px solid #333}
-.import-preview td{padding:2px 4px;border:1px solid #222;font-size:9px}
-
-/* Splash */
-.splash{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:90vh;width:100%;max-width:800px}
-.splash-title{font-size:48px;letter-spacing:16px;color:var(--blue);margin-bottom:4px;text-shadow:3px 3px 0 #001a3a}
-.splash-sub{font-size:10px;letter-spacing:3px;color:var(--blue);opacity:.7;margin-bottom:30px;text-align:center}
-.splash-lines{width:600px;height:200px;margin-bottom:30px}
-.splash-lines canvas{width:100%;height:100%}
-.press-start{font-size:16px;color:var(--yellow);letter-spacing:4px;cursor:pointer;animation:slowpulse 1.5s infinite;background:none;border:2px solid var(--yellow);padding:10px 30px;font-family:inherit}
-.press-start:hover{background:var(--yellow);color:#000}
-.splash-credit{font-size:8px;color:var(--dim);margin-top:20px;letter-spacing:1px}
-
-/* Setup screen */
-.setup{max-width:500px;margin:0 auto;padding:40px 20px}
-.setup-title{font-size:18px;color:var(--blue);letter-spacing:4px;text-align:center;margin-bottom:20px}
-.setup-form{border:2px solid var(--blue);padding:20px}
-.setup-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
-.setup-row label{font-size:12px;color:var(--blue);min-width:120px}
-.setup-row input{background:#000;color:var(--cyan);border:1px solid var(--blue);padding:6px 8px;font-family:inherit;font-size:14px;width:100px}
-
-/* Stats line */
-.stat-line{font-size:10px;color:var(--blue);margin:2px 0;display:flex;align-items:center}
-.stat-label{width:14px;text-align:center;margin-right:6px;font-weight:bold}
-.stat-name{width:130px}
-.stat-dots{color:var(--dim);letter-spacing:3px;flex:1}
-.stat-value{width:30px;text-align:right;font-weight:bold}
-
-/* Scrollbar */
-.console-panel::-webkit-scrollbar{width:6px}
-.console-panel::-webkit-scrollbar-track{background:#0a0a0a;border:1px solid #222}
-.console-panel::-webkit-scrollbar-thumb{background:var(--blue)}
-.console-panel::-webkit-scrollbar-thumb:hover{background:var(--red)}
-
-/* Print */
-@media print{body{background:#fff}.main-wrap{flex-direction:column}.traj-panel,.console-panel{width:100%;border-color:#000}.data-speaks{border-color:#000}}
-
-/* Demo narration bar */
-.demo-bar{position:fixed;bottom:0;left:0;right:0;background:rgba(0,0,0,.96);border-top:3px solid var(--blue);color:#fff;padding:14px 20px;z-index:10000;display:flex;align-items:center;gap:14px;transform:translateY(100%);transition:transform .4s cubic-bezier(.4,0,.2,1);font-family:'Courier New',monospace}
-.demo-bar.visible{transform:translateY(0)}
-.demo-rec{width:8px;height:8px;background:#f83800;border-radius:50%;flex-shrink:0;animation:demoBlink 1.2s infinite}
-@keyframes demoBlink{0%,100%{opacity:1}50%{opacity:.2}}
-.demo-badge{background:var(--blue);color:#000;padding:3px 10px;font-size:10px;font-weight:bold;letter-spacing:1px;white-space:nowrap;flex-shrink:0}
-.demo-text{flex:1;min-width:0}
-.demo-title{font-weight:bold;font-size:13px;margin-bottom:2px;color:var(--yellow)}
-.demo-body{font-size:11px;color:#aaa;line-height:1.5}
-.demo-comp{text-align:center;min-width:66px;flex-shrink:0}
-.demo-comp-val{font-size:22px;font-weight:bold;line-height:1;transition:color .3s}
-.demo-comp-lbl{font-size:8px;color:#686868;margin-top:2px;letter-spacing:1px}
-.demo-stop{background:none;border:1px solid var(--red);color:var(--red);padding:5px 12px;font-family:inherit;font-size:10px;cursor:pointer;letter-spacing:1px;flex-shrink:0}
-.demo-stop:hover{background:var(--red);color:#000}
-@keyframes demoGlow{0%{box-shadow:0 0 0 2px rgba(92,148,252,.4)}50%{box-shadow:0 0 0 4px rgba(92,148,252,.7),0 0 12px rgba(92,148,252,.2)}100%{box-shadow:0 0 0 2px rgba(92,148,252,.4)}}
-.demo-field-glow{animation:demoGlow .7s ease-in-out;border-color:var(--yellow)!important}
-@keyframes demoPulse{0%{transform:scale(1)}40%{transform:scale(1.15)}100%{transform:scale(1)}}
-.demo-pulse{animation:demoPulse .5s ease-in-out}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.A.G.E. - System for Algorithmic Generation of Evaluations</title>
+    <style>
+        @font-face {
+            font-family: 'NES';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .nes-container {
+            width: 768px;
+            background-color: #000;
+            border: 4px solid #c42110;
+            padding: 20px;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        .data-console {
+            width: 400px;
+            background-color: #000;
+            border: 4px solid #5c94fc;
+            padding: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .console-title {
+            text-align: center;
+            font-size: 18px;
+            color: #5c94fc;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+        
+        .data-entry {
+            background-color: #1a1a1a;
+            border: 2px solid #5c94fc;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .data-entry.active {
+            border-color: #ffa800;
+            box-shadow: 0 0 10px #ffa800;
+        }
+        
+        .data-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #ffa800;
+        }
+        
+        .data-entry-time {
+            color: #00e8d8;
+        }
+        
+        .data-entry-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .data-entry-controls button {
+            padding: 2px 8px;
+            font-size: 10px;
+        }
+        
+        .data-values {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .data-value {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .data-value label {
+            color: #5c94fc;
+            width: 50px;
+        }
+        
+        .data-value input {
+            width: 80px;
+            font-size: 12px;
+            padding: 2px 4px;
+        }
+        
+        .data-value .status-indicator {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #5c94fc;
+            margin-left: 5px;
+        }
+        
+        .data-value .status-indicator.good {
+            background-color: #00e8d8;
+        }
+        
+        .data-value .status-indicator.bad {
+            background-color: #f83800;
+        }
+        
+        .biorhythm-values {
+            border-top: 1px solid #5c94fc;
+            padding-top: 8px;
+            font-size: 11px;
+        }
+        
+        .biorhythm-value {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        
+        .biorhythm-value .label {
+            width: 100px;
+        }
+        
+        .biorhythm-value.physical { color: #f83800; }
+        .biorhythm-value.sensitivity { color: #ffa800; }
+        .biorhythm-value.intellectual { color: #00e8d8; }
+        
+        .title {
+            text-align: center;
+            font-size: 24px;
+            letter-spacing: 8px;
+            margin-bottom: 10px;
+            color: #5c94fc;
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        .info-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #5c94fc;
+        }
+        
+        #biorhythm-display {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background-color: #000;
+            border: 2px solid #5c94fc;
+            margin-bottom: 20px;
+            cursor: crosshair;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        .stats {
+            margin-top: 20px;
+        }
+        
+        .stat-line {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #5c94fc;
+            display: flex;
+            align-items: center;
+        }
+        
+        .stat-label {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .stat-label.red { color: #f83800; }
+        .stat-label.yellow { color: #ffa800; }
+        .stat-label.cyan { color: #00e8d8; }
+        
+        .stat-name {
+            display: inline-block;
+            width: 200px;
+        }
+        
+        .dots {
+            display: inline-block;
+            color: #686868;
+            letter-spacing: 4px;
+        }
+        
+        .stat-value {
+            display: inline-block;
+            width: 80px;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .vitals-section {
+            margin-top: 30px;
+            border-top: 2px solid #5c94fc;
+            padding-top: 20px;
+        }
+        
+        .vital-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .vital-input {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .vital-label {
+            color: #5c94fc;
+            font-size: 14px;
+        }
+        
+        .vital-status {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #5c94fc;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .vital-status.good {
+            background-color: #00e8d8;
+        }
+        
+        .vital-status.bad {
+            background-color: #f83800;
+        }
+        
+        input {
+            background-color: #000;
+            color: #5c94fc;
+            border: 2px solid #5c94fc;
+            padding: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            margin: 0 5px;
+            width: 100px;
+        }
+        
+        input.name-input {
+            width: 150px;
+        }
+        
+        button {
+            background-color: #5c94fc;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        
+        button:hover {
+            background-color: #f83800;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .status-text {
+            font-size: 14px;
+            color: #ffa800;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .data-count {
+            font-size: 12px;
+            color: #5c94fc;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .current-time {
+            font-size: 12px;
+            color: #00e8d8;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .divination-message {
+            font-size: 16px;
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            border: 2px solid #5c94fc;
+            background-color: #1a1a1a;
+            letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        
+        .divination-message.all-good {
+            color: #00e8d8;
+            border-color: #00e8d8;
+        }
+        
+        .divination-message.all-bad {
+            color: #f83800;
+            border-color: #f83800;
+            animation: pulse 0.5s infinite;
+        }
+        
+        .divination-message.mixed {
+            color: #ffa800;
+            border-color: #ffa800;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        
+        .legend {
+            font-size: 10px;
+            color: #5c94fc;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #5c94fc;
+            background-color: #0a0a0a;
+        }
+        
+        .legend-item {
+            margin: 2px 0;
+        }
+        
+        .legend-item span {
+            color: #ffa800;
+        }
+        
+        /* Scrollbar styling */
+        .data-console::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .data-console::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border: 1px solid #5c94fc;
+        }
+        
+        .data-console::-webkit-scrollbar-thumb {
+            background: #5c94fc;
+        }
+        
+        .data-console::-webkit-scrollbar-thumb:hover {
+            background: #f83800;
+        }
+    </style>
 </head>
 <body>
-<div id="app"></div>
-<script>
-(function(){'use strict';
-
-/* ===== CONSTANTS ===== */
-var DOMAINS=[
-  {key:'resp', name:'RESPIRATORY',  color:'#f83800',short:'RESP'},
-  {key:'hemo', name:'HEMODYNAMIC',  color:'#ffa800',short:'HEMO'},
-  {key:'nutr', name:'NUTRITION',    color:'#00e8d8',short:'NUTR'},
-  {key:'labs', name:'LABS/INFECTIOUS',color:'#39ff14',short:'LABS'},
-  {key:'stab', name:'STABILITY',    color:'#fc74fc',short:'STAB'}
-];
-var COMP_TIERS=[
-  {max:1.0,label:'CRITICAL TRAJECTORY',cls:'critical',color:'#f83800'},
-  {max:2.0,label:'CONCERNING',cls:'concerning',color:'#ffa800'},
-  {max:3.0,label:'STABLE',cls:'stable',color:'#00e8d8'},
-  {max:4.0,label:'TRENDING TOWARD DISCHARGE',cls:'discharge',color:'#39ff14'}
-];
-var VENT_MODES=['','RA','NC','HFNC','CPAP','NIPPV','CMV','HFOV','HFJV'];
-var CXR_OPTS=['','better','same','worse'];
-var CAP_OPTS=['','brisk','delayed'];
-var CULTURE_OPTS=['none','pending','positive','negative'];
-var FEED_TYPES=['','NPO','Trophic','Advancing','Full','Fortified'];
-var ARROWS={up:'\u2191',down:'\u2193',flat:'\u2192'};
-var LS_KEY='sage_v2_session';
-
-/* ===== STATE ===== */
-var S={
-  screen:'splash',
-  sessionId:'',
-  patient:{label:'',ga_wk:null,ga_day:null,dol:null,birthWeight:null},
-  assessments:[],
-  activePanel:'entry',
-  activeEntry:null,
-  viewRange:'all',
-  expandedSections:{resp:true,hemo:true,nutr:true,labs:true,stab:true},
-  draft:blankDraft(),
-  splashDone:false,
-  highlightIdx:null
-};
-
-function blankDraft(){
-  return {
-    dol:'',shift:'D',
-    resp:{ventMode:'',fio2:'',peep:'',mapPressure:'',rr:'',cxr:''},
-    hemo:{hrMin:'',hrMax:'',meanBP:'',capRefill:'',pressors:false},
-    nutr:{feedVol:'',feedType:'',tpn:false,weight:''},
-    labs:{crp:'',wbc:'',ph:'',lactate:'',culture:'none'},
-    stab:{tempMin:'',tempMax:'',apneas:'',bradys:'',desats:''},
-    notes:'',initials:''
-  };
-}
-
-function genId(){
-  var d=new Date();var y=String(d.getFullYear()).slice(2);
-  var m=String(d.getMonth()+1).padStart(2,'0');
-  var dd=String(d.getDate()).padStart(2,'0');
-  var r=Math.random().toString(36).substring(2,6).toUpperCase();
-  return 'SG-'+y+m+dd+'-'+r;
-}
-
-/* ===== SCORING ENGINE ===== */
-function scoreResp(a,prev){
-  var s=2;// default stable
-  var f=parseFloat(a.resp.fio2);
-  if(!isNaN(f)){
-    if(f<=21)s=4;else if(f<=30)s=3;else if(f<=40)s=2;else if(f<=60)s=1;else s=0;
-  }
-  var vm=a.resp.ventMode;
-  if(vm==='RA')s=Math.max(s,4);
-  else if(vm==='NC'||vm==='HFNC')s=Math.max(s>=3?s:3,s);
-  else if(vm==='HFOV'||vm==='HFJV')s=Math.min(s,1);
-  // RR factor
-  var rr=parseFloat(a.resp.rr);
-  if(!isNaN(rr)){
-    if(rr>=30&&rr<=60){}// normal — no change
-    else if(rr>60&&rr<=80)s=Math.max(0,s-1);
-    else if(rr>80)s=Math.max(0,s-2);
-    else if(rr<20)s=Math.max(0,s-1);
-  }
-  if(a.resp.cxr==='worse')s=Math.max(0,s-1);
-  else if(a.resp.cxr==='better')s=Math.min(4,s+1);
-  if(prev){
-    var pf=parseFloat(prev.resp.fio2);
-    if(!isNaN(f)&&!isNaN(pf)){
-      if(f<pf-5)s=Math.min(4,s+1);
-      else if(f>pf+5)s=Math.max(0,s-1);
-    }
-  }
-  return Math.max(0,Math.min(4,s));
-}
-
-function scoreHemo(a,prev){
-  var s=2;
-  var hrLo=parseFloat(a.hemo.hrMin);var hrHi=parseFloat(a.hemo.hrMax);
-  // Use midpoint for scoring, but flag wide range as lability
-  if(!isNaN(hrLo)&&!isNaN(hrHi)){
-    var hrMid=(hrLo+hrHi)/2;var hrSpread=hrHi-hrLo;
-    if(hrMid>=120&&hrMid<=180)s=3;
-    else if(hrMid>180||hrMid<100)s=1;
-    if(hrMid>200||hrMid<80)s=0;
-    // Wide HR range = lability penalty
-    if(hrSpread>40)s=Math.max(0,s-1);
-  }else if(!isNaN(hrLo)){
-    // Single value entered in min
-    if(hrLo>=120&&hrLo<=180)s=3;
-    else if(hrLo>180||hrLo<100)s=1;
-    if(hrLo>200||hrLo<80)s=0;
-  }
-  if(a.hemo.pressors)s=Math.min(s,1);
-  if(a.hemo.capRefill==='delayed')s=Math.max(0,s-1);
-  var bp=parseFloat(a.hemo.meanBP);
-  if(!isNaN(bp)){
-    if(bp>=30&&bp<=50)s=Math.min(4,s+1);
-    else if(bp<25)s=Math.max(0,s-1);
-  }
-  if(prev&&prev.hemo.pressors&&!a.hemo.pressors)s=Math.min(4,s+1);
-  return Math.max(0,Math.min(4,s));
-}
-
-function scoreNutr(a,prev){
-  var s=2;
-  var ft=a.nutr.feedType;
-  if(ft==='NPO')s=0;
-  else if(ft==='Trophic')s=1;
-  else if(ft==='Advancing')s=2;
-  else if(ft==='Full')s=3;
-  else if(ft==='Fortified')s=4;
-  if(a.nutr.tpn&&s>1)s=Math.max(1,s-1);
-  if(prev){
-    var pw=parseFloat(prev.nutr.weight);var cw=parseFloat(a.nutr.weight);
-    if(!isNaN(pw)&&!isNaN(cw)){
-      if(cw>pw)s=Math.min(4,s+1);
-      else if(cw<pw)s=Math.max(0,s-1);
-    }
-  }
-  return Math.max(0,Math.min(4,s));
-}
-
-function scoreLabs(a,prev){
-  var s=3;// default clean
-  var crp=parseFloat(a.labs.crp);
-  if(!isNaN(crp)){
-    if(crp<=0.5)s=4;else if(crp<=2)s=3;else if(crp<=5)s=2;else if(crp<=10)s=1;else s=0;
-  }
-  if(a.labs.culture==='positive')s=0;
-  else if(a.labs.culture==='pending')s=Math.min(s,2);
-  var ph=parseFloat(a.labs.ph);
-  if(!isNaN(ph)){
-    if(ph<7.2)s=Math.max(0,s-1);
-    else if(ph>=7.3&&ph<=7.45)s=Math.min(4,s);
-  }
-  var lac=parseFloat(a.labs.lactate);
-  if(!isNaN(lac)&&lac>4)s=Math.max(0,s-1);
-  if(prev){
-    var pc=parseFloat(prev.labs.crp);
-    if(!isNaN(crp)&&!isNaN(pc)){
-      if(crp<pc)s=Math.min(4,s+1);
-      else if(crp>pc)s=Math.max(0,s-1);
-    }
-  }
-  return Math.max(0,Math.min(4,s));
-}
-
-function scoreStab(a,prev){
-  var s=3;
-  var ap=parseInt(a.stab.apneas)||0;
-  var br=parseInt(a.stab.bradys)||0;
-  var ds=parseInt(a.stab.desats)||0;
-  var events=ap+br+ds;
-  if(events===0)s=4;else if(events<=2)s=3;else if(events<=5)s=2;else if(events<=10)s=1;else s=0;
-  var tmin=parseFloat(a.stab.tempMin);var tmax=parseFloat(a.stab.tempMax);
-  if(!isNaN(tmin)&&!isNaN(tmax)){
-    if(tmin>=36.3&&tmax<=37.2){}// stable, no change
-    else if(tmin<36.0||tmax>37.5)s=Math.max(0,s-1);
-  }
-  return Math.max(0,Math.min(4,s));
-}
-
-var SCORE_FNS={resp:scoreResp,hemo:scoreHemo,nutr:scoreNutr,labs:scoreLabs,stab:scoreStab};
-
-function scoreAssessment(a,prev){
-  var scores={};
-  DOMAINS.forEach(function(d){scores[d.key]=SCORE_FNS[d.key](a,prev);});
-  var vals=DOMAINS.map(function(d){return scores[d.key];});
-  scores.composite=vals.reduce(function(a,b){return a+b;},0)/vals.length;
-  return scores;
-}
-
-function getCompTier(comp){
-  for(var i=0;i<COMP_TIERS.length;i++){if(comp<=COMP_TIERS[i].max)return COMP_TIERS[i];}
-  return COMP_TIERS[COMP_TIERS.length-1];
-}
-
-function getTrend(scores,key){
-  if(scores.length<2)return 'flat';
-  var last=scores[scores.length-1][key];
-  var prev=scores[scores.length-2][key];
-  if(last>prev)return 'up';if(last<prev)return 'down';return 'flat';
-}
-
-/* ===== NARRATIVE ENGINE ===== */
-function narrative(allScores){
-  if(allScores.length===0)return 'DATA SPEAKS: AWAITING INPUT...';
-  var latest=allScores[allScores.length-1];
-  var parts=[];
-  DOMAINS.forEach(function(d){
-    var trend=getTrend(allScores,d.key);
-    var val=latest[d.key];
-    if(trend==='up')parts.push(d.short+' IMPROVING');
-    else if(trend==='down')parts.push(d.short+' DECLINING');
-    else if(val<=1)parts.push(d.short+' CONCERNING');
-  });
-  var tier=getCompTier(latest.composite);
-  if(parts.length===0){
-    if(latest.composite>=3.1)return 'DATA SPEAKS: ALL DOMAINS POSITIVE. '+tier.label+'.';
-    return 'DATA SPEAKS: ALL DOMAINS STABLE. STEADY STATE.';
-  }
-  return 'DATA SPEAKS: '+parts.join('. ')+'. '+tier.label+'.';
-}
-
-/* ===== CANVAS DRAWING ===== */
-function drawLane(canvasId,scores,domainKey,color,highlightIdx,domainIdx,dols){
-  var c=document.getElementById(canvasId);if(!c)return;
-  var ctx=c.getContext('2d');
-  c.width=c.offsetWidth*2;c.height=c.offsetHeight*2;
-  ctx.scale(2,2);
-  var W=c.offsetWidth;var H=c.offsetHeight;
-  var PAD_B=8;// bottom padding for DOL labels
-  var drawH=H-PAD_B;// drawing area height
-
-  // Background
-  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
-
-  // Horizontal grid (score levels 0-4)
-  ctx.strokeStyle='#0a4f0a';ctx.lineWidth=0.5;
-  for(var j=0;j<=4;j++){
-    var gy=drawH-(j/4)*drawH;
-    ctx.beginPath();ctx.moveTo(0,gy);ctx.lineTo(W,gy);ctx.stroke();
-  }
-
-  // Center line (score=2, "stable" threshold)
-  var centerY=drawH-(2/4)*drawH;
-  ctx.strokeStyle='#1a7f1a';ctx.lineWidth=1;ctx.setLineDash([4,4]);
-  ctx.beginPath();ctx.moveTo(0,centerY);ctx.lineTo(W,centerY);ctx.stroke();
-  ctx.setLineDash([]);
-
-  if(scores.length===0)return;
-
-  // Build data points — X aligned to data index positions
-  var pts=[];
-  scores.forEach(function(s,i){
-    var x=scores.length===1?W/2:(i/(scores.length-1))*W;
-    var baseY=drawH-(s[domainKey]/4)*drawH;
-    pts.push({x:x,baseY:baseY,val:s[domainKey]});
-  });
-
-  // Vertical grid lines at each data point + DOL labels
-  ctx.strokeStyle='#0a4f0a';ctx.lineWidth=0.5;
-  pts.forEach(function(p,i){
-    ctx.beginPath();ctx.moveTo(p.x,0);ctx.lineTo(p.x,drawH);ctx.stroke();
-    // DOL label at bottom
-    if(dols&&dols[i]!==undefined){
-      ctx.fillStyle='#444';ctx.font='7px Courier New';
-      ctx.textAlign='center';
-      ctx.fillText(dols[i],p.x,H-1);
-      ctx.textAlign='left';
-    }
-  });
-
-  // Helper: get interpolated Y at any progress (0..1) along the data
-  function getYAtProgress(prog){
-    if(scores.length===1)return pts[0].baseY;
-    var dataPos=prog*(scores.length-1);
-    var seg=Math.min(Math.floor(dataPos),scores.length-2);
-    var frac=dataPos-seg;
-    return pts[seg].baseY+(pts[Math.min(seg+1,pts.length-1)].baseY-pts[seg].baseY)*frac;
-  }
-  function getScoreAtProgress(prog){
-    if(scores.length===1)return pts[0].val;
-    var dataPos=prog*(scores.length-1);
-    var seg=Math.min(Math.floor(dataPos),scores.length-2);
-    var frac=dataPos-seg;
-    return pts[seg].val+(pts[Math.min(seg+1,pts.length-1)].val-pts[seg].val)*frac;
-  }
-
-  var t=S._scanPhase;// 0..1 cycling
-  var di=domainIdx||0;// domain index for per-lane variation
-
-  // === V1-STYLE SNAKE: moving head + trailing body ===
-  // Each domain gets distinct speed, frequency, and phase offset
-  var speeds=[2.0,2.3,1.8,2.6,2.1];
-  var freqs=[18,22,15,25,20];
-  var phases=[0,1.2,2.5,0.7,3.8];
-
-  var snakeLen=0.40;
-  var headPos=(t*speeds[di]+phases[di]*0.1)%1.0;
-
-  var dotCount=80;
-  for(var d=0;d<dotCount;d++){
-    var dotOffset=d/dotCount*snakeLen;
-    var dotProgress=headPos-dotOffset;
-
-    // Wrap around
-    if(dotProgress<0)dotProgress+=1.0;
-    if(dotProgress>1)dotProgress-=1.0;
-
-    var x=dotProgress*W;
-    var baseY=getYAtProgress(dotProgress);
-    var scoreHere=getScoreAtProgress(dotProgress);
-
-    // Sinewave undulation — distinct per domain
-    var amp=2+Math.abs(scoreHere-2)*1.2;
-    var sineY=Math.sin(dotProgress*freqs[di]+S._scanPhase*Math.PI*6+phases[di])*amp;
-    var y=Math.max(1,Math.min(drawH-1,baseY+sineY));
-
-    // Trail fade: head bright → tail gone
-    var trailFade=1.0-(d/dotCount);
-    trailFade=trailFade*trailFade;
-
-    var scoreBright=0.35+0.65*(scoreHere/4);
-    var alpha=trailFade*scoreBright;
-    if(alpha<0.03)continue;
-
-    ctx.globalAlpha=alpha;ctx.fillStyle=color;
-
-    if(d<3){ctx.fillRect(x-3,y-3,6,6);}// head: big
-    else if(d%2===0){ctx.fillRect(x-2,y-2,4,4);}// body: smaller
-  }
-  ctx.globalAlpha=1;
-
-  // Ghost trail: faint static line showing full trajectory
-  if(pts.length>1){
-    ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=0.2;
-    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].baseY);
-    for(var k=1;k<pts.length;k++)ctx.lineTo(pts[k].x,pts[k].baseY);
-    ctx.stroke();ctx.globalAlpha=1;
-  }
-
-  // Anchor dots at actual data points — PROMINENT
-  pts.forEach(function(p,i){
-    // Outer glow
-    ctx.globalAlpha=0.25;ctx.fillStyle=color;
-    ctx.fillRect(p.x-5,p.baseY-5,10,10);
-    // Inner dot
-    var bright=0.6+0.4*(p.val/4);
-    ctx.globalAlpha=bright;ctx.fillStyle=color;
-    ctx.fillRect(p.x-3,p.baseY-3,6,6);
-    // Score value label above dot
-    ctx.fillStyle='#fff';ctx.globalAlpha=0.7;ctx.font='8px Courier New';
-    ctx.textAlign='center';
-    ctx.fillText(p.val,p.x,p.baseY-7);
-    ctx.textAlign='left';
-    ctx.globalAlpha=1;
-    // Highlight selected
-    if(highlightIdx!==null&&i===highlightIdx){
-      ctx.strokeStyle='#fff';ctx.lineWidth=2;
-      ctx.strokeRect(p.x-6,p.baseY-6,12,12);
-    }
-  });
-}
-
-function drawComposite(scores){
-  var el=document.getElementById('composite-fill');
-  var valEl=document.getElementById('composite-val');
-  if(!el||scores.length===0){
-    if(el)el.style.width='0%';if(valEl)valEl.textContent='--';return;
-  }
-  var latest=scores[scores.length-1];
-  var pct=(latest.composite/4)*100;
-  var tier=getCompTier(latest.composite);
-  el.style.width=pct+'%';el.style.background=tier.color;
-  valEl.textContent=latest.composite.toFixed(1);
-}
-
-/* ===== RENDER ===== */
-var app=document.getElementById('app');
-function render(){
-  if(S.screen==='splash')return renderSplash();
-  if(S.screen==='setup')return renderSetup();
-  renderMain();
-}
-
-function renderSplash(){
-  app.innerHTML='<div class="splash">'+
-    '<div class="splash-title">S.A.G.E.</div>'+
-    '<div class="splash-sub">SYSTEM FOR ALGORITHMIC GENERATION OF EVALUATIONS</div>'+
-    '<div class="splash-sub" style="margin-top:-20px;opacity:.5">CLINICAL TRAJECTORY DASHBOARD v2.0</div>'+
-    '<canvas id="splash-canvas" class="splash-lines" width="600" height="200"></canvas>'+
-    '<button class="press-start" data-action="start">PRESS START</button>'+
-    '<button class="press-start" data-action="demo" style="margin-top:12px;border-color:var(--cyan);color:var(--cyan);font-size:12px;padding:8px 24px;animation:none;opacity:.8">\u25B6 WATCH DEMO</button>'+
-    '<div class="splash-credit">A.S. CLINICAL INSTRUMENT SERIES &mdash; 2026</div>'+
-  '</div>';
-  animateSplashLines();
-}
-
-function animateSplashLines(){
-  var c=document.getElementById('splash-canvas');if(!c)return;
-  var ctx=c.getContext('2d');
-  var W=600,H=200;c.width=W;c.height=H;
-  var colors=['#f83800','#ffa800','#00e8d8','#39ff14','#fc74fc'];
-  var started=[false,false,false,false,false];
-  var t=0;
-  function frame(){
-    if(S.screen!=='splash')return;
-    ctx.fillStyle='rgba(0,0,0,0.15)';ctx.fillRect(0,0,W,H);
-    // Stagger start each line
-    for(var i=0;i<5;i++){
-      if(t>i*30)started[i]=true;
-      var cy=20+i*36;
-      ctx.strokeStyle=colors[i];ctx.lineWidth=2;
-      ctx.beginPath();
-      for(var x=0;x<W;x++){
-        var amp=started[i]?Math.min(12,(t-i*30)*0.15):0;
-        var freq=0.02+i*0.005;
-        var phase=t*0.03+i*1.2;
-        var y=cy+Math.sin(x*freq+phase)*amp;
-        if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
-      }
-      ctx.stroke();
-    }
-    t++;
-    requestAnimationFrame(frame);
-  }
-  frame();
-}
-
-function renderSetup(){
-  app.innerHTML='<div class="setup">'+
-    '<div class="setup-title">PATIENT SETUP</div>'+
-    '<div class="setup-form">'+
-      '<div class="setup-row"><label>LABEL:</label><input data-field="label" value="'+esc(S.patient.label)+'" placeholder="BABY001" style="width:160px"></div>'+
-      '<div class="setup-row"><label>GA (weeks):</label><input type="number" data-field="ga_wk" value="'+(S.patient.ga_wk||'')+'" placeholder="24" style="width:70px"><span style="color:#5c94fc;margin:0 4px">+</span><input type="number" data-field="ga_day" value="'+(S.patient.ga_day||'')+'" placeholder="3" style="width:50px"><span style="color:#686868;font-size:10px">days</span></div>'+
-      '<div class="setup-row"><label>DOL:</label><input type="number" data-field="dol" value="'+(S.patient.dol||'')+'" placeholder="1"></div>'+
-      '<div class="setup-row"><label>BIRTH WT (g):</label><input type="number" data-field="birthWeight" value="'+(S.patient.birthWeight||'')+'" placeholder="620"></div>'+
-      '<div style="text-align:center;margin-top:20px"><button class="btn" data-action="begin">INITIALIZE S.A.G.E.</button></div>'+
-    '</div>'+
-  '</div>';
-}
-
-function renderMain(){
-  var allScores=calcAllScores();
-  var filteredIdx=filterByRange(allScores);
-  var filtered=filteredIdx.map(function(i){return allScores[i];});
-
-  // Left panel
-  var left='<div class="title">S.A.G.E.</div>'+
-    '<div class="subtitle">SYSTEM FOR ALGORITHMIC GENERATION OF EVALUATIONS</div>'+
-    '<div class="info-line">'+
-      '<span>'+(S.patient.label||'---')+'</span>'+
-      '<span>DOL:'+(S.patient.dol||'--')+'</span>'+
-      '<span>GA:'+(S.patient.ga_wk||'--')+'+'+(S.patient.ga_day||'-')+'</span>'+
-      '<span style="font-size:10px;color:#686868">'+S.sessionId+'</span>'+
-      '<span>'+rangeButtons()+'</span>'+
-    '</div>';
-
-  // Lanes
-  DOMAINS.forEach(function(d,i){
-    var latest=filtered.length>0?filtered[filtered.length-1]:null;
-    var scoreVal=latest?latest[d.key]:'--';
-    var trend=filtered.length>=2?getTrend(filtered,d.key):'flat';
-    var arrow=ARROWS[trend];
-    var trendColor=trend==='up'?'#39ff14':trend==='down'?'#f83800':'#ffa800';
-    left+='<div class="lane-wrap">'+
-      '<div class="lane-header"><span class="name" style="color:'+d.color+'">'+d.name+'</span>'+
-        '<span><span class="score" style="color:'+d.color+'">'+scoreVal+'</span>'+
-        '<span class="arrow" style="color:'+trendColor+'">'+arrow+'</span></span>'+
-      '</div>'+
-      '<canvas class="lane-canvas" id="lane-'+d.key+'"></canvas>'+
-    '</div>';
-  });
-
-  // Composite
-  var compCls='';var compTxt='--';
-  if(filtered.length>0){
-    var tier=getCompTier(filtered[filtered.length-1].composite);
-    compCls=tier.cls;compTxt=tier.label;
-  }
-  left+='<div class="composite-wrap">'+
-    '<div class="composite-label">COMPOSITE TRAJECTORY</div>'+
-    '<div class="composite-bar-bg"><div class="composite-bar-fill" id="composite-fill"></div><span class="composite-val" id="composite-val">--</span></div>'+
-  '</div>';
-
-  // DOL axis
-  left+='<div class="dol-axis" id="dol-axis"></div>';
-
-  // DATA SPEAKS
-  var msg=narrative(filtered);
-  left+='<div class="data-speaks '+compCls+'">'+esc(msg)+'</div>';
-
-  // Controls
-  left+='<div style="text-align:center;margin-top:8px">'+
-    '<button class="btn-outline" data-action="demo">\u25B6 WATCH DEMO</button> '+
-    '<button class="btn-outline" data-action="demo-quick">QUICK FILL</button> '+
-    '<button class="btn-outline" data-action="export-csv">EXPORT CSV</button> '+
-    '<button class="btn-outline btn-red" data-action="clear-all" style="border-color:#f83800">CLEAR</button>'+
-  '</div>';
-
-  // Right panel
-  var right='<div class="console-title">DATA CONSOLE</div>'+
-    '<div class="tab-bar">'+
-      '<button data-action="tab" data-tab="entry" class="'+(S.activePanel==='entry'?'active':'')+'">ENTRY</button>'+
-      '<button data-action="tab" data-tab="history" class="'+(S.activePanel==='history'?'active':'')+'">HISTORY</button>'+
-      '<button data-action="tab" data-tab="import" class="'+(S.activePanel==='import'?'active':'')+'">IMPORT</button>'+
-    '</div>';
-
-  if(S.activePanel==='entry')right+=renderEntryForm();
-  else if(S.activePanel==='history')right+=renderHistory();
-  else if(S.activePanel==='import')right+=renderImport();
-
-  app.innerHTML='<div class="main-wrap">'+
-    '<div class="traj-panel">'+left+'</div>'+
-    '<div class="console-panel">'+right+'</div>'+
-  '</div>';
-
-  // Draw canvases after DOM is ready
-  requestAnimationFrame(function(){
-    var hiIdx=S.highlightIdx!==null?filteredIdx.indexOf(S.highlightIdx):null;
-    var dols=filteredIdx.map(function(i){return S.assessments[i]?S.assessments[i].dol:'';});
-    DOMAINS.forEach(function(d,di){drawLane('lane-'+d.key,filtered,d.key,d.color,hiIdx,di,dols);});
-    drawComposite(filtered);
-    renderDolAxis(filtered);
-  });
-}
-
-function rangeButtons(){
-  var opts=['3d','7d','14d','all'];
-  return '<span class="range-btns">'+opts.map(function(o){
-    return '<button data-action="range" data-range="'+o+'" class="'+(S.viewRange===o?'active':'')+'">'+o.toUpperCase()+'</button>';
-  }).join('')+'</span>';
-}
-
-function renderDolAxis(filtered){
-  var el=document.getElementById('dol-axis');if(!el||filtered.length===0)return;
-  var dols=S.assessments.map(function(a){return a.dol;});
-  var unique=[];dols.forEach(function(d){if(unique.indexOf(d)===-1)unique.push(d);});
-  unique.sort(function(a,b){return a-b;});
-  // Show up to 10 labels
-  var step=Math.max(1,Math.floor(unique.length/10));
-  var labels=[];for(var i=0;i<unique.length;i+=step)labels.push(unique[i]);
-  el.innerHTML=labels.map(function(d){return '<span>DOL '+d+'</span>';}).join('');
-}
-
-function renderEntryForm(){
-  var d=S.draft;
-  var h='<div style="margin-bottom:10px"><div class="form-row">'+
-    '<label>DOL:</label><input type="number" data-draft="dol" value="'+esc(d.dol)+'" style="width:60px"> '+
-    '<label>SHIFT:</label><select data-draft="shift"><option value="D"'+(d.shift==='D'?' selected':'')+'>DAY</option><option value="N"'+(d.shift==='N'?' selected':'')+'>NIGHT</option></select>'+
-  '</div></div>';
-
-  // Respiratory
-  h+=formSection('resp','RESPIRATORY','#f83800',
-    row('Vent:',sel('resp.ventMode',VENT_MODES,d.resp.ventMode))+
-    row('FiO2%:',inp('resp.fio2',d.resp.fio2,'21'))+
-    row('PEEP:',inp('resp.peep',d.resp.peep,'6'))+
-    row('MAP:',inp('resp.mapPressure',d.resp.mapPressure,'10'))+
-    row('RR:',inp('resp.rr',d.resp.rr,'45'))+
-    row('CXR:',sel('resp.cxr',CXR_OPTS,d.resp.cxr))
-  );
-
-  // Hemodynamic
-  h+=formSection('hemo','HEMODYNAMIC','#ffa800',
-    row('HR Min:',inp('hemo.hrMin',d.hemo.hrMin,'130'))+
-    row('HR Max:',inp('hemo.hrMax',d.hemo.hrMax,'160'))+
-    row('Mean BP:',inp('hemo.meanBP',d.hemo.meanBP,'35'))+
-    row('Cap Refill:',sel('hemo.capRefill',CAP_OPTS,d.hemo.capRefill))+
-    row('Pressors:',chk('hemo.pressors',d.hemo.pressors))
-  );
-
-  // Nutrition
-  h+=formSection('nutr','NUTRITION','#00e8d8',
-    row('Feed Type:',sel('nutr.feedType',FEED_TYPES,d.nutr.feedType))+
-    row('Vol (mL):',inp('nutr.feedVol',d.nutr.feedVol,'20'))+
-    row('TPN:',chk('nutr.tpn',d.nutr.tpn))+
-    row('Weight(g):',inp('nutr.weight',d.nutr.weight,'650'))
-  );
-
-  // Labs
-  h+=formSection('labs','LABS / INFECTIOUS','#39ff14',
-    row('CRP:',inp('labs.crp',d.labs.crp,'0.5'))+
-    row('WBC:',inp('labs.wbc',d.labs.wbc,'12'))+
-    row('pH:',inp('labs.ph',d.labs.ph,'7.35'))+
-    row('Lactate:',inp('labs.lactate',d.labs.lactate,'1.5'))+
-    row('Culture:',sel('labs.culture',CULTURE_OPTS,d.labs.culture))
-  );
-
-  // Stability
-  h+=formSection('stab','STABILITY','#fc74fc',
-    row('Temp Min:',inp('stab.tempMin',d.stab.tempMin,'36.5'))+
-    row('Temp Max:',inp('stab.tempMax',d.stab.tempMax,'37.0'))+
-    row('Apneas:',inp('stab.apneas',d.stab.apneas,'0'))+
-    row('Bradys:',inp('stab.bradys',d.stab.bradys,'0'))+
-    row('Desats:',inp('stab.desats',d.stab.desats,'0'))
-  );
-
-  h+='<div class="form-row"><label>Notes:</label></div><textarea class="form-notes" data-draft="notes">'+esc(d.notes)+'</textarea>';
-  h+='<div class="form-row" style="margin-top:6px"><label>Initials:</label><input data-draft="initials" value="'+esc(d.initials)+'" style="width:60px"></div>';
-  h+='<div style="text-align:center;margin-top:8px"><button class="btn btn-green" data-action="submit">SUBMIT ASSESSMENT</button></div>';
-  return h;
-}
-
-function formSection(key,label,color,content){
-  var open=S.expandedSections[key];
-  return '<div class="form-section" style="border-color:'+(open?color:'#222')+'">'+
-    '<div class="form-section-title" data-action="toggle-section" data-section="'+key+'" style="color:'+color+'">'+
-      '<span>'+label+'</span><span class="chevron'+(open?' open':'')+'">&#9654;</span>'+
-    '</div>'+
-    (open?'<div>'+content+'</div>':'')+
-  '</div>';
-}
-
-function row(lbl,input){return '<div class="form-row"><label>'+lbl+'</label>'+input+'</div>';}
-function inp(path,val,ph){return '<input type="number" step="any" data-draft="'+path+'" value="'+esc(val)+'" placeholder="'+ph+'">';}
-function sel(path,opts,val){
-  return '<select data-draft="'+path+'">'+opts.map(function(o){
-    var v=typeof o==='object'?o.value:o;var l=typeof o==='object'?o.label:(o||'--');
-    return '<option value="'+v+'"'+(val===v?' selected':'')+'>'+l.toUpperCase()+'</option>';
-  }).join('')+'</select>';
-}
-function chk(path,val){return '<input type="checkbox" data-draft="'+path+'"'+(val?' checked':'')+'>';}
-function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
-
-function renderHistory(){
-  if(S.assessments.length===0)return '<div style="text-align:center;color:#686868;padding:20px">NO ASSESSMENTS YET</div>';
-  var allScores=calcAllScores();
-  var h='';
-  for(var i=S.assessments.length-1;i>=0;i--){
-    var a=S.assessments[i];var sc=allScores[i];
-    var active=S.highlightIdx===i?' active':'';
-    h+='<div class="hist-entry'+active+'" data-action="highlight" data-idx="'+i+'">'+
-      '<div class="hist-header"><span>DOL '+a.dol+' ('+a.shift+')</span><span style="color:#00e8d8">#'+(i+1)+'</span></div>'+
-      '<div class="hist-scores">';
-    DOMAINS.forEach(function(d){
-      h+='<span style="color:'+d.color+'">'+d.short+':'+sc[d.key]+'</span>';
-    });
-    h+='<span style="color:#fff">COMP:'+sc.composite.toFixed(1)+'</span>';
-    h+='</div>';
-    if(a.notes)h+='<div style="font-size:9px;color:#686868;margin-top:2px">'+esc(a.notes).substring(0,60)+'</div>';
-    h+='<div class="hist-controls">'+
-      '<button class="btn-sm btn" data-action="edit-entry" data-idx="'+i+'">EDIT</button>'+
-      '<button class="btn-sm btn-red" data-action="delete-entry" data-idx="'+i+'">DEL</button>'+
-    '</div></div>';
-  }
-  return h;
-}
-
-function renderImport(){
-  return '<div style="margin-bottom:8px;font-size:10px;color:#686868">Paste tab-delimited flowsheet data from EHR:</div>'+
-    '<textarea class="import-area" id="import-text" placeholder="DateTime\tHR\tRR\tSpO2\tTemp\tFiO2\n03/04 0800\t155\t42\t95\t36.8\t30"></textarea>'+
-    '<div style="text-align:center;margin-top:8px">'+
-      '<button class="btn" data-action="parse-import">PARSE</button>'+
-    '</div>'+
-    '<div id="import-preview"></div>';
-}
-
-/* ===== SCORING HELPERS ===== */
-function calcAllScores(){
-  var scores=[];
-  S.assessments.forEach(function(a,i){
-    var prev=i>0?S.assessments[i-1]:null;
-    scores.push(scoreAssessment(a,prev));
-  });
-  return scores;
-}
-
-function filterByRange(scores){
-  if(S.viewRange==='all'||S.assessments.length===0){
-    return S.assessments.map(function(_,i){return i;});
-  }
-  var days=S.viewRange==='3d'?3:S.viewRange==='7d'?7:14;
-  var maxDol=S.assessments[S.assessments.length-1].dol;
-  var minDol=maxDol-days;
-  var idx=[];
-  S.assessments.forEach(function(a,i){if(a.dol>=minDol)idx.push(i);});
-  return idx;
-}
-
-/* ===== EVENT HANDLING ===== */
-app.addEventListener('click',function(e){
-  var t=e.target;
-  var action=t.getAttribute('data-action');
-  if(!action&&t.parentElement)action=t.parentElement.getAttribute('data-action');
-  if(!action)return;
-
-  if(action==='start'){S.screen='setup';render();return;}
-  if(action==='begin'){
-    if(!S.sessionId)S.sessionId=genId();
-    S.screen='main';save();render();return;
-  }
-  if(action==='tab'){
-    var tab=t.getAttribute('data-tab')||t.parentElement.getAttribute('data-tab');
-    if(tab){S.activePanel=tab;render();}return;
-  }
-  if(action==='range'){
-    var r=t.getAttribute('data-range');if(r){S.viewRange=r;render();}return;
-  }
-  if(action==='toggle-section'){
-    var sec=t.getAttribute('data-section')||t.parentElement.getAttribute('data-section');
-    if(sec){S.expandedSections[sec]=!S.expandedSections[sec];render();}return;
-  }
-  if(action==='submit'){submitAssessment();return;}
-  if(action==='highlight'){
-    var idx=parseInt(t.getAttribute('data-idx')||t.parentElement.getAttribute('data-idx')||t.parentElement.parentElement.getAttribute('data-idx'));
-    if(!isNaN(idx)){S.highlightIdx=S.highlightIdx===idx?null:idx;render();}return;
-  }
-  if(action==='edit-entry'){
-    e.stopPropagation();
-    var ei=parseInt(t.getAttribute('data-idx'));
-    if(!isNaN(ei)&&S.assessments[ei]){
-      S.draft=JSON.parse(JSON.stringify(S.assessments[ei]));
-      S.activeEntry=ei;S.activePanel='entry';render();
-    }return;
-  }
-  if(action==='delete-entry'){
-    e.stopPropagation();
-    var di=parseInt(t.getAttribute('data-idx'));
-    if(!isNaN(di)){S.assessments.splice(di,1);S.highlightIdx=null;save();render();}return;
-  }
-  if(action==='demo'){runDemo();return;}
-  if(action==='demo-quick'){generateDemo();return;}
-  if(action==='export-csv'){exportCSV();return;}
-  if(action==='clear-all'){S.assessments=[];S.highlightIdx=null;S.draft=blankDraft();save();render();return;}
-  if(action==='parse-import'){parseImport();return;}
-});
-
-app.addEventListener('input',function(e){
-  var t=e.target;
-  // Setup fields
-  var field=t.getAttribute('data-field');
-  if(field){
-    var v=t.value;
-    if(t.type==='number')v=v===''?null:parseFloat(v);
-    S.patient[field]=v;
-    return;
-  }
-  // Draft fields
-  var draft=t.getAttribute('data-draft');
-  if(draft){
-    var val=t.type==='checkbox'?t.checked:t.value;
-    if(draft.indexOf('.')>-1){
-      var parts=draft.split('.');
-      S.draft[parts[0]][parts[1]]=val;
-    }else{
-      S.draft[draft]=val;
-    }
-  }
-});
-
-app.addEventListener('change',function(e){
-  var t=e.target;
-  var draft=t.getAttribute('data-draft');
-  if(draft){
-    var val=t.type==='checkbox'?t.checked:t.value;
-    if(draft.indexOf('.')>-1){
-      var parts=draft.split('.');
-      S.draft[parts[0]][parts[1]]=val;
-    }else{
-      S.draft[draft]=val;
-    }
-  }
-});
-
-/* ===== SUBMIT ===== */
-function submitAssessment(){
-  var d=S.draft;
-  if(!d.dol&&d.dol!==0){alert('Enter DOL');return;}
-  var a=JSON.parse(JSON.stringify(d));
-  a.id=Date.now();
-  a.dol=parseInt(a.dol);
-
-  if(S.activeEntry!==null){
-    S.assessments[S.activeEntry]=a;
-    S.activeEntry=null;
-  }else{
-    S.assessments.push(a);
-    // Sort by DOL then shift
-    S.assessments.sort(function(x,y){
-      if(x.dol!==y.dol)return x.dol-y.dol;
-      return x.shift==='D'?-1:1;
-    });
-  }
-  S.draft=blankDraft();
-  // Auto-increment DOL
-  S.draft.dol=a.dol;
-  S.highlightIdx=null;
-  save();render();
-}
-
-/* ===== DEMO DATA ===== */
-// Full 14-day NICU course: Baby Luna — 24+3 weeker, 620g
-// Realistic trajectory with a late-onset sepsis scare on DOL 9
-var DEMO_STORY=[
-  // DOL 1: Birth day — acute RDS, intubated in DR
-  {dol:1,shift:'D',resp:{ventMode:'HFOV',fio2:'65',peep:'',mapPressure:'15',rr:'72',cxr:'worse'},hemo:{hrMin:'158',hrMax:'198',meanBP:'26',capRefill:'delayed',pressors:true},nutr:{feedVol:'0',feedType:'NPO',tpn:true,weight:'615'},labs:{crp:'5.8',wbc:'24',ph:'7.18',lactate:'5.2',culture:'pending'},stab:{tempMin:'35.5',tempMax:'37.8',apneas:'5',bradys:'4',desats:'8'},notes:'Intubated in DR. Surfactant x1.',initials:'AS'},
-  // DOL 2: Still critical — surfactant response partial
-  {dol:2,shift:'D',resp:{ventMode:'HFOV',fio2:'55',peep:'',mapPressure:'14',rr:'68',cxr:'same'},hemo:{hrMin:'152',hrMax:'188',meanBP:'28',capRefill:'delayed',pressors:true},nutr:{feedVol:'0',feedType:'NPO',tpn:true,weight:'608'},labs:{crp:'11.4',wbc:'19',ph:'7.22',lactate:'4.1',culture:'pending'},stab:{tempMin:'35.9',tempMax:'37.5',apneas:'4',bradys:'3',desats:'7'},notes:'2nd surfactant dose. UAC/UVC in.',initials:'AS'},
-  // DOL 3: Slight improvement — weaning attempt
-  {dol:3,shift:'D',resp:{ventMode:'HFOV',fio2:'48',peep:'',mapPressure:'13',rr:'64',cxr:'same'},hemo:{hrMin:'148',hrMax:'178',meanBP:'30',capRefill:'delayed',pressors:true},nutr:{feedVol:'0',feedType:'Trophic',tpn:true,weight:'605'},labs:{crp:'9.2',wbc:'16',ph:'7.26',lactate:'3.4',culture:'negative'},stab:{tempMin:'36.0',tempMax:'37.3',apneas:'3',bradys:'2',desats:'5'},notes:'Trophic MBM started. Blood cx negative.',initials:'AS'},
-  // DOL 5: Turning the corner — extubated to CMV
-  {dol:5,shift:'D',resp:{ventMode:'CMV',fio2:'38',peep:'5',mapPressure:'10',rr:'55',cxr:'better'},hemo:{hrMin:'140',hrMax:'165',meanBP:'33',capRefill:'brisk',pressors:false},nutr:{feedVol:'5',feedType:'Trophic',tpn:true,weight:'610'},labs:{crp:'4.8',wbc:'12',ph:'7.31',lactate:'2.4',culture:'negative'},stab:{tempMin:'36.2',tempMax:'37.1',apneas:'2',bradys:'1',desats:'3'},notes:'Pressors weaned off. Extubated to CMV.',initials:'AS'},
-  // DOL 7: Good progress — weaning to CPAP
-  {dol:7,shift:'D',resp:{ventMode:'CPAP',fio2:'30',peep:'6',mapPressure:'',rr:'46',cxr:'better'},hemo:{hrMin:'135',hrMax:'158',meanBP:'36',capRefill:'brisk',pressors:false},nutr:{feedVol:'12',feedType:'Advancing',tpn:true,weight:'622'},labs:{crp:'2.1',wbc:'9.5',ph:'7.34',lactate:'1.8',culture:'none'},stab:{tempMin:'36.4',tempMax:'37.0',apneas:'1',bradys:'0',desats:'2'},notes:'Advancing feeds 12mL q3h. Good tolerance.',initials:'AS'},
-  // DOL 8: Continued improvement
-  {dol:8,shift:'D',resp:{ventMode:'CPAP',fio2:'25',peep:'5',mapPressure:'',rr:'42',cxr:'same'},hemo:{hrMin:'132',hrMax:'152',meanBP:'38',capRefill:'brisk',pressors:false},nutr:{feedVol:'18',feedType:'Advancing',tpn:true,weight:'638'},labs:{crp:'1.2',wbc:'8.5',ph:'7.36',lactate:'1.4',culture:'none'},stab:{tempMin:'36.5',tempMax:'36.9',apneas:'0',bradys:'0',desats:'1'},notes:'TPN weaning. Weight gain starting.',initials:'AS'},
-  // DOL 9: SETBACK — late-onset sepsis scare. CRP spikes, feeds held.
-  {dol:9,shift:'D',resp:{ventMode:'CPAP',fio2:'38',peep:'6',mapPressure:'',rr:'58',cxr:'worse'},hemo:{hrMin:'148',hrMax:'182',meanBP:'30',capRefill:'delayed',pressors:false},nutr:{feedVol:'0',feedType:'NPO',tpn:true,weight:'632'},labs:{crp:'8.8',wbc:'18',ph:'7.30',lactate:'2.8',culture:'pending'},stab:{tempMin:'35.8',tempMax:'37.6',apneas:'3',bradys:'2',desats:'5'},notes:'Sepsis workup sent. Feeds held. Abx started.',initials:'AS'},
-  // DOL 10: Sepsis scare — stabilizing on abx, cultures still pending
-  {dol:10,shift:'D',resp:{ventMode:'CPAP',fio2:'33',peep:'6',mapPressure:'',rr:'52',cxr:'same'},hemo:{hrMin:'142',hrMax:'170',meanBP:'32',capRefill:'brisk',pressors:false},nutr:{feedVol:'0',feedType:'NPO',tpn:true,weight:'630'},labs:{crp:'12.5',wbc:'15',ph:'7.28',lactate:'2.5',culture:'pending'},stab:{tempMin:'36.1',tempMax:'37.4',apneas:'2',bradys:'1',desats:'3'},notes:'CRP still rising. Hemodynamically stable. Watching.',initials:'AS'},
-  // DOL 11: Cultures negative — recovery begins
-  {dol:11,shift:'D',resp:{ventMode:'CPAP',fio2:'28',peep:'5',mapPressure:'',rr:'45',cxr:'same'},hemo:{hrMin:'135',hrMax:'158',meanBP:'35',capRefill:'brisk',pressors:false},nutr:{feedVol:'5',feedType:'Trophic',tpn:true,weight:'634'},labs:{crp:'6.2',wbc:'11',ph:'7.33',lactate:'1.9',culture:'negative'},stab:{tempMin:'36.3',tempMax:'37.1',apneas:'1',bradys:'0',desats:'2'},notes:'Cultures negative at 48h. Restarting trophics.',initials:'AS'},
-  // DOL 12: Recovery — weaning back down
-  {dol:12,shift:'D',resp:{ventMode:'HFNC',fio2:'25',peep:'',mapPressure:'',rr:'42',cxr:'better'},hemo:{hrMin:'130',hrMax:'150',meanBP:'38',capRefill:'brisk',pressors:false},nutr:{feedVol:'15',feedType:'Advancing',tpn:false,weight:'645'},labs:{crp:'2.8',wbc:'9',ph:'7.36',lactate:'1.4',culture:'negative'},stab:{tempMin:'36.5',tempMax:'36.9',apneas:'0',bradys:'0',desats:'1'},notes:'Off TPN. Feeds advancing well. CRP falling.',initials:'AS'},
-  // DOL 13: Strong recovery
-  {dol:13,shift:'D',resp:{ventMode:'NC',fio2:'22',peep:'',mapPressure:'',rr:'38',cxr:'better'},hemo:{hrMin:'128',hrMax:'148',meanBP:'42',capRefill:'brisk',pressors:false},nutr:{feedVol:'30',feedType:'Advancing',tpn:false,weight:'665'},labs:{crp:'0.9',wbc:'7.5',ph:'7.39',lactate:'1.0',culture:'none'},stab:{tempMin:'36.5',tempMax:'36.8',apneas:'0',bradys:'0',desats:'0'},notes:'Weaned to NC. Excellent feed tolerance.',initials:'AS'},
-  // DOL 14: Near-baseline
-  {dol:14,shift:'D',resp:{ventMode:'RA',fio2:'21',peep:'',mapPressure:'',rr:'36',cxr:'same'},hemo:{hrMin:'125',hrMax:'145',meanBP:'44',capRefill:'brisk',pressors:false},nutr:{feedVol:'42',feedType:'Full',tpn:false,weight:'692'},labs:{crp:'0.3',wbc:'7',ph:'7.41',lactate:'0.8',culture:'none'},stab:{tempMin:'36.6',tempMax:'36.8',apneas:'0',bradys:'0',desats:'0'},notes:'Room air. Full feeds. Approaching discharge criteria.',initials:'AS'}
-];
-
-// Narration steps — one per assessment + intro + conclusion
-var DEMO_STEPS=[
-  {badge:'INTRO',title:'Demonstration Mode',body:'Following Baby Luna — 24+3 weeker, 620 grams — through 14 days in the NICU. Watch S.A.G.E. weave sterile data into a clinical trajectory.'},
-  {badge:'SETUP',title:'Patient Registered',body:'Baby Luna. 24 weeks, 3 days gestational age. 620 grams. Day of life 1. The clock starts now.'},
-  {badge:'DOL 1',title:'Birth Day — Critical',body:'Intubated in the delivery room. HFOV, FiO2 65%. Pressors started. CRP 5.8, pH 7.18, lactate 5.2. Frequent A/B/Ds. Classic extreme prematurity presentation.'},
-  {badge:'DOL 2',title:'Still Critical',body:'Second surfactant dose. FiO2 improving (65\u219255%). CRP rising to 11.4 — the inflammatory cascade is still building. Lines placed. Weight down 12g.'},
-  {badge:'DOL 3',title:'First Signs',body:'Trophic feeds started. Blood cultures negative at 48h. FiO2 down to 48%. Still on pressors but MAP improving. The first thread of the tapestry.'},
-  {badge:'DOL 5',title:'Turning the Corner',body:'Extubated to CMV. Pressors weaned off. CRP falling (9.2\u21924.8). Weight stabilizing. The trajectory is shifting — S.A.G.E. sees the pattern change.'},
-  {badge:'DOL 7',title:'Building Momentum',body:'Weaned to CPAP. Feeds advancing to 12mL q3h. CRP 2.1. Only 1 apnea episode, zero bradys. Multiple domains improving simultaneously.'},
-  {badge:'DOL 8',title:'Continued Progress',body:'CPAP weaning. FiO2 25%. Weight gain starting (622\u2192638g). TPN being weaned. The trajectory is solidly positive across all lanes.'},
-  {badge:'DOL 9',title:'SETBACK \u2014 Sepsis Scare',body:'Temperature instability. CRP spikes to 8.8. Feeds held. Sepsis workup sent, antibiotics started. FiO2 back up to 38%. Watch what happens to all 5 lanes simultaneously \u2014 this is what S.A.G.E. is built for.'},
-  {badge:'DOL 10',title:'The Valley',body:'CRP peaks at 12.5. Still NPO. Cultures pending. But hemodynamics stable — no pressors needed. The dashboard shows WHICH domains are hit and which hold steady.'},
-  {badge:'DOL 11',title:'Cultures Negative',body:'48-hour cultures negative. CRP starting to fall (12.5\u21926.2). Trophic feeds restarted cautiously. Temperature stabilizing. The recovery trajectory begins.'},
-  {badge:'DOL 12',title:'Recovery',body:'Weaned to HFNC. Off TPN. Feeds advancing. CRP 2.8. The lanes are climbing back. S.A.G.E. captures not just "good" or "bad" but the shape of recovery.'},
-  {badge:'DOL 13',title:'Strong Recovery',body:'Nasal cannula. Feeds at 30mL, tolerating well. CRP 0.9. Weight 665g — first time clearly above birth weight. All lanes trending upward.'},
-  {badge:'DOL 14',title:'Approaching Discharge Criteria',body:'Room air. Full feeds. CRP 0.3. Weight 692g — up 72 grams from birth. Zero cardiorespiratory events. All 5 domains green.'},
-  {badge:'RESULT',title:'The Tapestry',body:'14 days. 12 assessments. 5 domains. 1 coherent story. The EHR stored these as isolated data points. S.A.G.E. wove them into a trajectory. You can see the acute phase, the recovery, the setback on day 9, and the second recovery. Data speaks.'}
-];
-
-function generateDemo(){
-  S.assessments=[];
-  S.patient={label:'BABY_LUNA',ga_wk:24,ga_day:3,dol:1,birthWeight:620};
-  S.sessionId=genId();
-  DEMO_STORY.forEach(function(entry){
-    var a=JSON.parse(JSON.stringify(entry));
-    a.id=Date.now()+Math.random()*1000;
-    S.assessments.push(a);
-  });
-  save();render();
-}
-
-/* ===== ANIMATED DEMO ===== */
-var demoRunning=false;
-var demoAbort=false;
-
-function dW(ms){
-  return new Promise(function(resolve){
-    if(demoAbort)return resolve();
-    setTimeout(resolve,ms);
-  });
-}
-
-function dFlash(el){
-  if(!el)return;
-  el.classList.add('demo-field-glow');
-  setTimeout(function(){el.classList.remove('demo-field-glow');},700);
-}
-
-function dNarrate(stepIdx){
-  var n=DEMO_STEPS[stepIdx];
-  var bar=document.getElementById('demo-bar');
-  if(!bar){
-    bar=document.createElement('div');
-    bar.id='demo-bar';bar.className='demo-bar';
-    document.body.appendChild(bar);
-  }
-
-  // Get composite score if we have data
-  var compHtml='';
-  if(S.assessments.length>0){
-    var allSc=calcAllScores();
-    var latest=allSc[allSc.length-1];
-    var tier=getCompTier(latest.composite);
-    compHtml='<div class="demo-comp">'+
-      '<div class="demo-comp-val demo-pulse" style="color:'+tier.color+'">'+latest.composite.toFixed(1)+'</div>'+
-      '<div class="demo-comp-lbl">COMPOSITE</div></div>';
-  }
-
-  bar.innerHTML='<div class="demo-rec"></div>'+
-    '<div class="demo-badge">'+n.badge+'</div>'+
-    '<div class="demo-text">'+
-      '<div class="demo-title">'+n.title+'</div>'+
-      '<div class="demo-body">'+n.body+'</div>'+
-    '</div>'+compHtml+
-    '<button class="demo-stop" onclick="window._stopDemo()">STOP DEMO</button>';
-
-  requestAnimationFrame(function(){bar.classList.add('visible');});
-}
-
-function dHideBar(){
-  var bar=document.getElementById('demo-bar');
-  if(bar)bar.classList.remove('visible');
-}
-
-function dSetField(draftPath,val){
-  // Set value in state
-  if(draftPath.indexOf('.')>-1){
-    var parts=draftPath.split('.');
-    S.draft[parts[0]][parts[1]]=val;
-  }else{
-    S.draft[draftPath]=val;
-  }
-  // Flash the DOM element
-  var el=document.querySelector('[data-draft="'+draftPath+'"]');
-  if(el){
-    if(el.type==='checkbox'){el.checked=val;}
-    else{el.value=val;}
-    dFlash(el);
-  }
-}
-
-async function dTypeInto(draftPath,text){
-  var el=document.querySelector('[data-draft="'+draftPath+'"]');
-  if(!el)return;
-  el.value='';el.focus();
-  for(var i=0;i<String(text).length;i++){
-    if(demoAbort)break;
-    el.value+=String(text)[i];
-    await dW(40);
-  }
-  // Set in state
-  if(draftPath.indexOf('.')>-1){
-    var parts=draftPath.split('.');
-    S.draft[parts[0]][parts[1]]=text;
-  }else{
-    S.draft[draftPath]=text;
-  }
-  dFlash(el);
-}
-
-async function dEnterAssessment(entry,stepIdx){
-  if(demoAbort)return;
-
-  // Make sure entry panel is active and sections expanded
-  S.activePanel='entry';
-  S.expandedSections={resp:true,hemo:true,nutr:true,labs:true,stab:true};
-  S.draft=blankDraft();
-  render();
-  await dW(400);
-
-  // Narrate this step
-  dNarrate(stepIdx);
-  await dW(1200);
-  if(demoAbort)return;
-
-  // DOL + Shift
-  await dTypeInto('dol',entry.dol);
-  await dW(150);
-  dSetField('shift',entry.shift);
-  await dW(300);
-
-  // Scroll console to top
-  var console=document.querySelector('.console-panel');
-  if(console)console.scrollTop=0;
-
-  // Respiratory
-  if(entry.resp.ventMode){dSetField('resp.ventMode',entry.resp.ventMode);await dW(200);}
-  if(entry.resp.fio2){await dTypeInto('resp.fio2',entry.resp.fio2);await dW(150);}
-  if(entry.resp.peep){await dTypeInto('resp.peep',entry.resp.peep);await dW(150);}
-  if(entry.resp.mapPressure){await dTypeInto('resp.mapPressure',entry.resp.mapPressure);await dW(150);}
-  if(entry.resp.rr){await dTypeInto('resp.rr',entry.resp.rr);await dW(150);}
-  if(entry.resp.cxr){dSetField('resp.cxr',entry.resp.cxr);await dW(200);}
-
-  // Scroll down a bit
-  if(console)console.scrollTop=console.scrollHeight/4;
-  await dW(200);
-
-  // Hemodynamic
-  if(entry.hemo.hrMin){await dTypeInto('hemo.hrMin',entry.hemo.hrMin);await dW(150);}
-  if(entry.hemo.hrMax){await dTypeInto('hemo.hrMax',entry.hemo.hrMax);await dW(150);}
-  if(entry.hemo.meanBP){await dTypeInto('hemo.meanBP',entry.hemo.meanBP);await dW(150);}
-  if(entry.hemo.capRefill){dSetField('hemo.capRefill',entry.hemo.capRefill);await dW(200);}
-  if(entry.hemo.pressors){dSetField('hemo.pressors',entry.hemo.pressors);await dW(200);}
-
-  // Nutrition
-  if(entry.nutr.feedType){dSetField('nutr.feedType',entry.nutr.feedType);await dW(200);}
-  if(entry.nutr.feedVol){await dTypeInto('nutr.feedVol',entry.nutr.feedVol);await dW(150);}
-  if(entry.nutr.tpn){dSetField('nutr.tpn',entry.nutr.tpn);await dW(200);}
-  if(entry.nutr.weight){await dTypeInto('nutr.weight',entry.nutr.weight);await dW(150);}
-
-  if(console)console.scrollTop=console.scrollHeight/2;
-  await dW(200);
-
-  // Labs
-  if(entry.labs.crp){await dTypeInto('labs.crp',entry.labs.crp);await dW(150);}
-  if(entry.labs.wbc){await dTypeInto('labs.wbc',entry.labs.wbc);await dW(150);}
-  if(entry.labs.ph){await dTypeInto('labs.ph',entry.labs.ph);await dW(150);}
-  if(entry.labs.lactate){await dTypeInto('labs.lactate',entry.labs.lactate);await dW(150);}
-  if(entry.labs.culture&&entry.labs.culture!=='none'){dSetField('labs.culture',entry.labs.culture);await dW(200);}
-
-  // Stability
-  if(entry.stab.tempMin){await dTypeInto('stab.tempMin',entry.stab.tempMin);await dW(150);}
-  if(entry.stab.tempMax){await dTypeInto('stab.tempMax',entry.stab.tempMax);await dW(150);}
-  if(entry.stab.apneas){await dTypeInto('stab.apneas',entry.stab.apneas);await dW(150);}
-  if(entry.stab.bradys){await dTypeInto('stab.bradys',entry.stab.bradys);await dW(150);}
-  if(entry.stab.desats){await dTypeInto('stab.desats',entry.stab.desats);await dW(150);}
-
-  if(console)console.scrollTop=console.scrollHeight;
-  await dW(200);
-
-  // Notes
-  if(entry.notes){
-    S.draft.notes=entry.notes;
-    var notesEl=document.querySelector('[data-draft="notes"]');
-    if(notesEl){notesEl.value=entry.notes;dFlash(notesEl);}
-    await dW(200);
-  }
-
-  // Initials
-  S.draft.initials=entry.initials||'AS';
-  await dW(300);
-
-  // Flash submit button
-  var submitBtn=document.querySelector('[data-action="submit"]');
-  if(submitBtn)dFlash(submitBtn);
-  await dW(500);
-
-  // Submit
-  submitAssessment();
-  await dW(800);
-
-  // Let user read the narration and see the lanes update
-  await dW(2500);
-}
-
-async function runDemo(){
-  if(demoRunning)return;
-  demoRunning=true;
-  demoAbort=false;
-
-  // Clear state
-  S.assessments=[];
-  S.highlightIdx=null;
-  S.draft=blankDraft();
-  S.screen='splash';
-  render();
-
-  // Step 0: Intro narration on splash screen
-  await dW(800);
-  dNarrate(0);
-  await dW(5000);
-  if(demoAbort){demoRunning=false;return;}
-
-  // Auto-click PRESS START
-  S.screen='setup';render();
-  await dW(800);
-  if(demoAbort){demoRunning=false;return;}
-
-  // Step 1: Setup — type patient info
-  dNarrate(1);
-  await dW(600);
-
-  // Type label
-  var labelEl=document.querySelector('[data-field="label"]');
-  if(labelEl){
-    labelEl.value='';labelEl.focus();
-    var lbl='BABY_LUNA';
-    for(var c=0;c<lbl.length;c++){
-      if(demoAbort)break;
-      labelEl.value+=lbl[c];
-      await dW(60);
-    }
-    S.patient.label=lbl;dFlash(labelEl);
-  }
-  await dW(300);
-
-  // Set GA
-  var gaWk=document.querySelector('[data-field="ga_wk"]');
-  if(gaWk){gaWk.value='24';S.patient.ga_wk=24;dFlash(gaWk);}
-  await dW(200);
-  var gaDay=document.querySelector('[data-field="ga_day"]');
-  if(gaDay){gaDay.value='3';S.patient.ga_day=3;dFlash(gaDay);}
-  await dW(200);
-
-  // DOL
-  var dolEl=document.querySelector('[data-field="dol"]');
-  if(dolEl){dolEl.value='1';S.patient.dol=1;dFlash(dolEl);}
-  await dW(200);
-
-  // Birth weight
-  var bwEl=document.querySelector('[data-field="birthWeight"]');
-  if(bwEl){bwEl.value='620';S.patient.birthWeight=620;dFlash(bwEl);}
-  await dW(600);
-
-  // Click Initialize
-  var initBtn=document.querySelector('[data-action="begin"]');
-  if(initBtn)dFlash(initBtn);
-  await dW(500);
-  if(!S.sessionId)S.sessionId=genId();
-  S.screen='main';save();render();
-  await dW(1500);
-  if(demoAbort){demoRunning=false;return;}
-
-  // Steps 2-13: Enter assessments one by one
-  for(var i=0;i<DEMO_STORY.length;i++){
-    if(demoAbort)break;
-    await dEnterAssessment(DEMO_STORY[i],i+2);// steps 2..13 are assessment narrations
-    if(demoAbort)break;
-  }
-
-  if(!demoAbort){
-    // Final step: Conclusion
-    dNarrate(DEMO_STEPS.length-1);
-    // Switch to history tab to show full list
-    S.activePanel='history';render();
-    await dW(10000);
-  }
-
-  // Clean up
-  dHideBar();
-  demoRunning=false;
-  await dW(500);
-  var bar=document.getElementById('demo-bar');
-  if(bar)bar.remove();
-}
-
-// Global stop function (called from onclick)
-window._stopDemo=function(){
-  demoAbort=true;
-  demoRunning=false;
-  dHideBar();
-  setTimeout(function(){
-    var bar=document.getElementById('demo-bar');
-    if(bar)bar.remove();
-  },500);
-};
-
-/* ===== IMPORT ===== */
-function parseImport(){
-  var text=document.getElementById('import-text');
-  if(!text)return;
-  var raw=text.value.trim();
-  if(!raw){alert('Paste data first');return;}
-
-  var lines=raw.split('\n').filter(function(l){return l.trim();});
-  if(lines.length<2){alert('Need header row + data');return;}
-
-  var headers=lines[0].split('\t').map(function(h){return h.trim().toLowerCase();});
-  var preview=document.getElementById('import-preview');
-  var tbl='<table><tr>'+headers.map(function(h){return '<th>'+esc(h)+'</th>';}).join('')+'</tr>';
-
-  var parsed=[];
-  for(var i=1;i<lines.length;i++){
-    var cols=lines[i].split('\t');
-    var row={};
-    headers.forEach(function(h,j){row[h]=cols[j]?cols[j].trim():'';});
-    parsed.push(row);
-    tbl+='<tr>'+cols.map(function(c){return '<td>'+esc(c)+'</td>';}).join('')+'</tr>';
-  }
-  tbl+='</table>';
-
-  // Map to assessments
-  var count=0;
-  parsed.forEach(function(r){
-    var a=blankDraft();
-    a.id=Date.now()+Math.random()*1000;
-    a.dol=S.patient.dol?parseInt(S.patient.dol)+count:count+1;
-    a.shift='D';
-
-    // Fuzzy map columns
-    Object.keys(r).forEach(function(k){
-      var v=r[k];
-      if(k.match(/hr|heart/i)){a.hemo.hrMin=v;a.hemo.hrMax=v;}
-      else if(k.match(/rr|resp.*rate|breath/i))a.resp.rr=v;
-      else if(k.match(/spo2|sat|o2/i)){/* SpO2 maps to stability context */}
-      else if(k.match(/temp/i)){a.stab.tempMin=v;a.stab.tempMax=v;}
-      else if(k.match(/fio2|fi.*o2/i))a.resp.fio2=v;
-      else if(k.match(/map|mean.*bp/i))a.hemo.meanBP=v;
-      else if(k.match(/crp/i))a.labs.crp=v;
-      else if(k.match(/wbc|white/i))a.labs.wbc=v;
-      else if(k.match(/ph\b/i))a.labs.ph=v;
-      else if(k.match(/lact/i))a.labs.lactate=v;
-      else if(k.match(/peep/i))a.resp.peep=v;
-      else if(k.match(/weight|wt/i))a.nutr.weight=v;
-    });
-
-    S.assessments.push(a);
-    count++;
-  });
-
-  S.assessments.sort(function(x,y){return x.dol-y.dol;});
-  save();
-
-  preview.innerHTML=tbl+'<div style="text-align:center;margin-top:8px;color:#39ff14">'+count+' RECORDS IMPORTED</div>';
-  setTimeout(render,1500);
-}
-
-/* ===== CSV EXPORT ===== */
-function exportCSV(){
-  if(S.assessments.length===0){alert('No data to export');return;}
-  var allScores=calcAllScores();
-  var headers=['SessionID','DOL','Shift','VentMode','FiO2','PEEP','MAP_Pressure','RR','CXR',
-    'HR_Min','HR_Max','MeanBP','CapRefill','Pressors','FeedType','FeedVol','TPN','Weight',
-    'CRP','WBC','pH','Lactate','Culture','TempMin','TempMax','Apneas','Bradys','Desats',
-    'Score_Resp','Score_Hemo','Score_Nutr','Score_Labs','Score_Stab','Composite','Notes','Initials'];
-  var rows=[headers.join(',')];
-  S.assessments.forEach(function(a,i){
-    var sc=allScores[i];
-    var vals=[S.sessionId,a.dol,a.shift,a.resp.ventMode,a.resp.fio2,a.resp.peep,a.resp.mapPressure,a.resp.rr,a.resp.cxr,
-      a.hemo.hrMin,a.hemo.hrMax,a.hemo.meanBP,a.hemo.capRefill,a.hemo.pressors?1:0,a.nutr.feedType,a.nutr.feedVol,a.nutr.tpn?1:0,a.nutr.weight,
-      a.labs.crp,a.labs.wbc,a.labs.ph,a.labs.lactate,a.labs.culture,a.stab.tempMin,a.stab.tempMax,a.stab.apneas,a.stab.bradys,a.stab.desats,
-      sc.resp,sc.hemo,sc.nutr,sc.labs,sc.stab,sc.composite.toFixed(1),
-      '"'+(a.notes||'').replace(/"/g,'""')+'"',a.initials];
-    rows.push(vals.join(','));
-  });
-  var blob=new Blob([rows.join('\n')],{type:'text/csv'});
-  var url=URL.createObjectURL(blob);
-  var link=document.createElement('a');
-  link.href=url;link.download='SAGE_'+S.sessionId+'_'+new Date().toISOString().slice(0,10)+'.csv';
-  link.click();URL.revokeObjectURL(url);
-}
-
-/* ===== LOCALSTORAGE ===== */
-function save(){
-  var data={sessionId:S.sessionId,patient:S.patient,assessments:S.assessments};
-  try{localStorage.setItem(LS_KEY,JSON.stringify(data));}catch(e){}
-}
-function load(){
-  try{
-    var raw=localStorage.getItem(LS_KEY);
-    if(raw){
-      var data=JSON.parse(raw);
-      if(data.sessionId){S.sessionId=data.sessionId;S.patient=data.patient;S.assessments=data.assessments||[];S.screen='main';}
-    }
-  }catch(e){}
-}
-
-/* ===== SCAN LINE ANIMATION ===== */
-S._scanPhase=0;
-function animateScan(){
-  S._scanPhase+=0.002;if(S._scanPhase>1)S._scanPhase=0;
-  if(S.screen==='main'){
-    var allScores=calcAllScores();
-    var filteredIdx=filterByRange(allScores);
-    var filtered=filteredIdx.map(function(i){return allScores[i];});
-    var hiIdx=S.highlightIdx!==null?filteredIdx.indexOf(S.highlightIdx):null;
-    var dols=filteredIdx.map(function(i){return S.assessments[i]?S.assessments[i].dol:'';});
-    DOMAINS.forEach(function(d,di){drawLane('lane-'+d.key,filtered,d.key,d.color,hiIdx,di,dols);});
-  }
-  requestAnimationFrame(animateScan);
-}
-
-/* ===== INIT ===== */
-load();
-render();
-animateScan();
-
-})();
-</script>
+    <div class="main-container">
+        <div class="nes-container">
+            <div class="title">BIORHYTHM</div>
+            <div style="text-align: center; font-size: 10px; color: #5c94fc; margin-bottom: 10px; letter-spacing: 1px;">
+                SYSTEM FOR ALGORITHMIC GENERATION OF EVALUATIONS
+            </div>
+            
+            <div class="info-line">
+                <span id="baby-name">BABY001</span>
+                <span id="unit-name">S.A.G.E.</span>
+                <span id="current-date">10/23/89</span>
+            </div>
+            
+            <div id="biorhythm-display">
+                <canvas id="biorhythm-canvas"></canvas>
+                <div id="data-marker" style="position: absolute; display: none; pointer-events: none;">
+                    <div style="width: 2px; height: 400px; background: #fff; opacity: 0.8;"></div>
+                    <div style="position: absolute; top: -20px; left: -30px; background: #000; border: 1px solid #fff; padding: 2px 5px; font-size: 10px; white-space: nowrap;" id="marker-label"></div>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-line">
+                    <span class="stat-label red">++</span>
+                    <span class="stat-name">PHYSICAL</span>
+                    <span class="dots">........</span>
+                    <span class="stat-value" id="physical-value">0</span>
+                </div>
+                <div class="stat-line">
+                    <span class="stat-label yellow">++</span>
+                    <span class="stat-name">SENSITIVITY</span>
+                    <span class="dots">.....</span>
+                    <span class="stat-value" id="sensitivity-value">0</span>
+                </div>
+                <div class="stat-line">
+                    <span class="stat-label cyan">++</span>
+                    <span class="stat-name">INTELLECTUAL</span>
+                    <span class="dots">....</span>
+                    <span class="stat-value" id="intellectual-value">0</span>
+                </div>
+            </div>
+            
+            <div class="divination-message" id="divination-message">
+                DATA SPEAKS: WAITING...
+            </div>
+            
+            <div class="vitals-section">
+                <div class="vital-grid">
+                    <div class="vital-input">
+                        <span class="vital-label">HR:</span>
+                        <div>
+                            <input type="number" id="hr-input" placeholder="150" min="0" max="300">
+                            <span class="vital-status" id="hr-status"></span>
+                        </div>
+                    </div>
+                    <div class="vital-input">
+                        <span class="vital-label">RR:</span>
+                        <div>
+                            <input type="number" id="rr-input" placeholder="40" min="0" max="100">
+                            <span class="vital-status" id="rr-status"></span>
+                        </div>
+                    </div>
+                    <div class="vital-input">
+                        <span class="vital-label">SpO2:</span>
+                        <div>
+                            <input type="number" id="spo2-input" placeholder="95" min="0" max="100">
+                            <span class="vital-status" id="spo2-status"></span>
+                        </div>
+                    </div>
+                    <div class="vital-input">
+                        <span class="vital-label">TEMP:</span>
+                        <div>
+                            <input type="number" id="temp-input" placeholder="36.5" step="0.1" min="30" max="42">
+                            <span class="vital-status" id="temp-status"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <input type="text" id="baby-name-input" class="name-input" placeholder="Baby Name" value="BABY001">
+                    <button onclick="addVitals()">ADD VITALS</button>
+                    <button onclick="clearData()">CLEAR DATA</button>
+                    <button onclick="generateDemoData()">DEMO DATA</button>
+                    <button onclick="toggleAnimation()" id="anim-button">PAUSE</button>
+                </div>
+                
+                <div class="status-text" id="status-message">
+                    WAITING FOR DATA...
+                </div>
+                <div class="data-count" id="data-count">
+                    DATA POINTS: 0
+                </div>
+                <div class="current-time" id="current-time">
+                    CURRENT TIME: --
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">PHYSICAL: <span>HR + TEMP</span></div>
+                    <div class="legend-item">SENSITIVITY: <span>RESP RATE</span></div>
+                    <div class="legend-item">INTELLECTUAL: <span>SpO2</span></div>
+                    <div class="legend-item" style="margin-top: 5px; color: #00e8d8;">ABOVE LINE = GOOD (1)</div>
+                    <div class="legend-item" style="color: #f83800;">BELOW LINE = BAD (0)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="data-console">
+            <div class="console-title">DATA CONSOLE</div>
+            <div id="data-entries"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('biorhythm-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas resolution
+        canvas.width = 764;
+        canvas.height = 396;
+        
+        // Animation variables
+        let animationFrame = 0;
+        let isAnimating = true;
+        let animationId = null;
+        let currentDataPointIndex = 0;
+        
+        // Vital data storage
+        let vitalReadings = [];
+        
+        // Wave data - stores the calculated biorhythm values
+        let waveData = {
+            physical: [],
+            sensitivity: [],
+            intellectual: []
+        };
+        
+        // NICU Vital Ranges
+        const vitalRanges = {
+            hr: { min: 120, max: 180 },
+            rr: { min: 30, max: 60 },
+            spo2: { min: 92, max: 100 },
+            temp: { min: 36.0, max: 37.5 }
+        };
+        
+        // NES-style colors
+        const colors = {
+            physical: '#f83800',      // Red
+            sensitivity: '#ffa800',   // Yellow/Orange
+            intellectual: '#00e8d8',  // Cyan
+            grid: '#0a4f0a',         // Dark green
+            gridBright: '#1a7f1a'    // Bright green
+        };
+        
+        function updateDate() {
+            const now = new Date();
+            const displayDate = (now.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                              now.getDate().toString().padStart(2, '0') + '/' +
+                              now.getFullYear().toString().substr(2);
+            document.getElementById('current-date').textContent = displayDate;
+        }
+        
+        function checkVital(value, type) {
+            const range = vitalRanges[type];
+            return value >= range.min && value <= range.max;
+        }
+        
+        function updateVitalStatus() {
+            const hrValue = parseFloat(document.getElementById('hr-input').value);
+            const rrValue = parseFloat(document.getElementById('rr-input').value);
+            const spo2Value = parseFloat(document.getElementById('spo2-input').value);
+            const tempValue = parseFloat(document.getElementById('temp-input').value);
+            
+            let currentStatus = { hr: 0, rr: 0, spo2: 0, temp: 0 };
+            
+            if (!isNaN(hrValue)) {
+                currentStatus.hr = checkVital(hrValue, 'hr') ? 1 : 0;
+                document.getElementById('hr-status').className = 'vital-status ' + (currentStatus.hr ? 'good' : 'bad');
+            }
+            
+            if (!isNaN(rrValue)) {
+                currentStatus.rr = checkVital(rrValue, 'rr') ? 1 : 0;
+                document.getElementById('rr-status').className = 'vital-status ' + (currentStatus.rr ? 'good' : 'bad');
+            }
+            
+            if (!isNaN(spo2Value)) {
+                currentStatus.spo2 = checkVital(spo2Value, 'spo2') ? 1 : 0;
+                document.getElementById('spo2-status').className = 'vital-status ' + (currentStatus.spo2 ? 'good' : 'bad');
+            }
+            
+            if (!isNaN(tempValue)) {
+                currentStatus.temp = checkVital(tempValue, 'temp') ? 1 : 0;
+                document.getElementById('temp-status').className = 'vital-status ' + (currentStatus.temp ? 'good' : 'bad');
+            }
+            
+            return currentStatus;
+        }
+        
+        // Add event listeners for real-time updates
+        ['hr-input', 'rr-input', 'spo2-input', 'temp-input'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateVitalStatus);
+        });
+        
+        // Add click handler for selecting data points on grid
+        canvas.addEventListener('click', function(e) {
+            if (vitalReadings.length === 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const clickProgress = x / canvas.width;
+            const dataIndex = Math.floor(clickProgress * vitalReadings.length);
+            
+            if (dataIndex >= 0 && dataIndex < vitalReadings.length) {
+                currentDataPointIndex = dataIndex;
+                highlightActiveDataPoint(dataIndex);
+                
+                // Calculate the animation frame that corresponds to this data point
+                const dataLength = waveData.physical.length;
+                const cycleLength = dataLength * 20; // Must match the cycleLength in animate()
+                animationFrame = (dataIndex / dataLength) * cycleLength;
+                
+                // Update displays for selected point
+                const reading = vitalReadings[dataIndex];
+                const time = new Date(reading.timestamp);
+                const timeStr = time.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+                document.getElementById('current-time').textContent = `SELECTED: ${timeStr}`;
+                
+                // Flash the selection
+                const marker = document.getElementById('data-marker');
+                marker.style.display = 'block';
+                marker.style.left = x + 'px';
+                document.getElementById('marker-label').textContent = `POINT ${dataIndex + 1}`;
+                
+                setTimeout(() => {
+                    marker.style.display = 'none';
+                }, 2000);
+            }
+        });
+        
+        // Add hover effect
+        canvas.addEventListener('mousemove', function(e) {
+            if (vitalReadings.length === 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const hoverProgress = x / canvas.width;
+            const dataIndex = Math.floor(hoverProgress * vitalReadings.length);
+            
+            if (dataIndex >= 0 && dataIndex < vitalReadings.length) {
+                canvas.style.cursor = 'pointer';
+                canvas.title = `Click to select data point ${dataIndex + 1}`;
+            }
+        });
+        
+        function drawGrid() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = colors.grid;
+            ctx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let i = 0; i < 31; i++) {
+                const x = (i / 30) * canvas.width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines (17 lines from -8 to +8)
+            for (let i = 0; i < 17; i++) {
+                const y = (i / 16) * canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw center line (0 line) - brighter
+            ctx.strokeStyle = colors.gridBright;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            // Draw axis markers (+ at top, 0 at center, - at bottom)
+            ctx.fillStyle = colors.gridBright;
+            ctx.font = '16px Courier New';
+            ctx.fillText('+', 5, 20);
+            ctx.fillText('0', 5, canvas.height / 2 + 5);
+            ctx.fillText('-', 5, canvas.height - 10);
+        }
+        
+        function calculateBiorhythmValue(hr, rr, spo2, temp, type) {
+            // Normalize vital values to -1 to 1 range
+            const hrNorm = (hr - vitalRanges.hr.min) / (vitalRanges.hr.max - vitalRanges.hr.min) * 2 - 1;
+            const rrNorm = (rr - vitalRanges.rr.min) / (vitalRanges.rr.max - vitalRanges.rr.min) * 2 - 1;
+            const spo2Norm = (spo2 - vitalRanges.spo2.min) / (vitalRanges.spo2.max - vitalRanges.spo2.min) * 2 - 1;
+            const tempNorm = (temp - vitalRanges.temp.min) / (vitalRanges.temp.max - vitalRanges.temp.min) * 2 - 1;
+            
+            // Calculate biorhythm based on vital combinations
+            let value = 0;
+            switch(type) {
+                case 'physical':
+                    // Physical based on HR and Temperature
+                    value = (hrNorm + tempNorm) / 2;
+                    break;
+                case 'sensitivity':
+                    // Sensitivity based on RR
+                    value = rrNorm;
+                    break;
+                case 'intellectual':
+                    // Intellectual based on SpO2
+                    value = spo2Norm;
+                    break;
+            }
+            
+            // Scale to -8 to +8 range
+            return value * 8;
+        }
+        
+        function updateWaveData() {
+            // Generate wave data from vital readings
+            waveData = {
+                physical: [],
+                sensitivity: [],
+                intellectual: []
+            };
+            
+            vitalReadings.forEach(reading => {
+                const physical = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'physical'
+                );
+                const sensitivity = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'sensitivity'
+                );
+                const intellectual = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'intellectual'
+                );
+                
+                waveData.physical.push(physical);
+                waveData.sensitivity.push(sensitivity);
+                waveData.intellectual.push(intellectual);
+            });
+        }
+        
+        function updateDataConsole() {
+            const container = document.getElementById('data-entries');
+            container.innerHTML = '';
+            
+            vitalReadings.forEach((reading, index) => {
+                const date = new Date(reading.timestamp);
+                const timeStr = date.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+                const dateStr = date.toLocaleDateString('en-US', { 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    year: '2-digit' 
+                });
+                
+                const physical = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'physical'
+                );
+                const sensitivity = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'sensitivity'
+                );
+                const intellectual = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'intellectual'
+                );
+                
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'data-entry';
+                entryDiv.id = `entry-${index}`;
+                entryDiv.innerHTML = `
+                    <div class="data-entry-header">
+                        <span>POINT ${index + 1}</span>
+                        <span class="data-entry-time">${dateStr} ${timeStr}</span>
+                        <div class="data-entry-controls">
+                            <button onclick="updateDataPoint(${index})">UPDATE</button>
+                            <button onclick="deleteDataPoint(${index})">DELETE</button>
+                        </div>
+                    </div>
+                    <div class="data-values">
+                        <div class="data-value">
+                            <label>HR:</label>
+                            <input type="number" id="hr-${index}" value="${reading.hr.toFixed(0)}" min="0" max="300">
+                            <span class="status-indicator ${reading.status.hr ? 'good' : 'bad'}"></span>
+                        </div>
+                        <div class="data-value">
+                            <label>RR:</label>
+                            <input type="number" id="rr-${index}" value="${reading.rr.toFixed(0)}" min="0" max="100">
+                            <span class="status-indicator ${reading.status.rr ? 'good' : 'bad'}"></span>
+                        </div>
+                        <div class="data-value">
+                            <label>SpO2:</label>
+                            <input type="number" id="spo2-${index}" value="${reading.spo2.toFixed(0)}" min="0" max="100">
+                            <span class="status-indicator ${reading.status.spo2 ? 'good' : 'bad'}"></span>
+                        </div>
+                        <div class="data-value">
+                            <label>TEMP:</label>
+                            <input type="number" id="temp-${index}" value="${reading.temp.toFixed(1)}" step="0.1" min="30" max="42">
+                            <span class="status-indicator ${reading.status.temp ? 'good' : 'bad'}"></span>
+                        </div>
+                    </div>
+                    <div class="biorhythm-values">
+                        <div class="biorhythm-value physical">
+                            <span class="label">PHYSICAL:</span>
+                            <span>${physical.toFixed(1)}</span>
+                        </div>
+                        <div class="biorhythm-value sensitivity">
+                            <span class="label">SENSITIVITY:</span>
+                            <span>${sensitivity.toFixed(1)}</span>
+                        </div>
+                        <div class="biorhythm-value intellectual">
+                            <span class="label">INTELLECTUAL:</span>
+                            <span>${intellectual.toFixed(1)}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(entryDiv);
+            });
+        }
+        
+        function highlightActiveDataPoint(index) {
+            // Remove active class from all entries
+            document.querySelectorAll('.data-entry').forEach(entry => {
+                entry.classList.remove('active');
+            });
+            
+            // Add active class to current entry
+            const activeEntry = document.getElementById(`entry-${index}`);
+            if (activeEntry) {
+                activeEntry.classList.add('active');
+                // Scroll into view if needed
+                activeEntry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+        
+        function updateDataPoint(index) {
+            const hr = parseFloat(document.getElementById(`hr-${index}`).value);
+            const rr = parseFloat(document.getElementById(`rr-${index}`).value);
+            const spo2 = parseFloat(document.getElementById(`spo2-${index}`).value);
+            const temp = parseFloat(document.getElementById(`temp-${index}`).value);
+            
+            if (!isNaN(hr) && !isNaN(rr) && !isNaN(spo2) && !isNaN(temp)) {
+                vitalReadings[index].hr = hr;
+                vitalReadings[index].rr = rr;
+                vitalReadings[index].spo2 = spo2;
+                vitalReadings[index].temp = temp;
+                vitalReadings[index].status = {
+                    hr: checkVital(hr, 'hr') ? 1 : 0,
+                    rr: checkVital(rr, 'rr') ? 1 : 0,
+                    spo2: checkVital(spo2, 'spo2') ? 1 : 0,
+                    temp: checkVital(temp, 'temp') ? 1 : 0
+                };
+                
+                updateWaveData();
+                updateDataConsole();
+                updateStatusMessage();
+                
+                // Draw a vertical marker for new data point
+                const marker = document.getElementById('data-marker');
+                const xPos = (vitalReadings.length - 1) / vitalReadings.length * canvas.width;
+                marker.style.display = 'block';
+                marker.style.left = xPos + 'px';
+                document.getElementById('marker-label').textContent = 'NEW';
+                
+                setTimeout(() => {
+                    marker.style.display = 'none';
+                }, 1500);
+            }
+        }
+        
+        function deleteDataPoint(index) {
+            vitalReadings.splice(index, 1);
+            updateWaveData();
+            updateDataConsole();
+            updateStatusMessage();
+            
+            // Update data count
+            document.getElementById('data-count').textContent = `DATA POINTS: ${vitalReadings.length}`;
+        }
+        
+        function updateStatusMessage() {
+            if (vitalReadings.length === 0) {
+                document.getElementById('status-message').textContent = 'WAITING FOR DATA...';
+                document.getElementById('status-message').style.color = '#ffa800';
+                return;
+            }
+            
+            const lastReading = vitalReadings[vitalReadings.length - 1];
+            const totalGood = Object.values(lastReading.status).reduce((a, b) => a + b, 0);
+            const statusEl = document.getElementById('status-message');
+            if (totalGood === 4) {
+                statusEl.textContent = 'ALL SYSTEMS NORMAL';
+                statusEl.style.color = '#00e8d8';
+            } else {
+                statusEl.textContent = `WARNING - ${4 - totalGood} VITAL(S) ABNORMAL`;
+                statusEl.style.color = '#f83800';
+            }
+        }
+        
+        function animate() {
+            if (!isAnimating) return;
+            
+            drawGrid();
+            
+            if (vitalReadings.length === 0) {
+                animationId = requestAnimationFrame(animate);
+                return;
+            }
+            
+            const dotSize = 4;
+            const centerY = canvas.height / 2;
+            const amplitude = (canvas.height / 2 - 10) / 8; // Scale for -8 to +8 range
+            
+            // TRUE SNAKE EFFECT - dots moving left to right
+            const dotsPerWave = 30; // Number of dots visible per wave
+            const scrollSpeed = 1.5; // Animation speed
+            const scrollOffset = animationFrame * scrollSpeed;
+            
+            // Calculate which data points we're showing based on scroll position
+            const dataLength = waveData.physical.length;
+            const cycleLength = dataLength * 20; // Pixels per data cycle
+            const currentCycle = Math.floor(scrollOffset / cycleLength);
+            const cycleProgress = (scrollOffset % cycleLength) / cycleLength;
+            
+            // Update current data point based on cycle progress
+            currentDataPointIndex = Math.floor(cycleProgress * dataLength) % dataLength;
+            
+            // Update displays
+            if (vitalReadings[currentDataPointIndex]) {
+                const currentTime = new Date(vitalReadings[currentDataPointIndex].timestamp);
+                const timeStr = currentTime.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+                document.getElementById('current-time').textContent = `CURRENT TIME: ${timeStr}`;
+                highlightActiveDataPoint(currentDataPointIndex);
+            }
+            
+            // Draw the snake of dots
+            for (let i = 0; i < dotsPerWave * 3; i++) { // 3x for smoother coverage
+                // Calculate x position - dots move left to right
+                const x = ((scrollOffset + i * 8) % (canvas.width + 200)) - 100;
+                
+                // Only draw if on screen
+                if (x >= -10 && x <= canvas.width + 10) {
+                    // Calculate which data point this x position corresponds to
+                    const dataProgress = (x / canvas.width) * dataLength;
+                    const dataIndex = Math.floor(dataProgress) % dataLength;
+                    const nextIndex = (dataIndex + 1) % dataLength;
+                    const interpolation = dataProgress - Math.floor(dataProgress);
+                    
+                    // Fade effect - dots fade as they approach right edge
+                    const fadeStart = canvas.width * 0.7;
+                    const opacity = x < fadeStart ? 1 : Math.max(0, 1 - ((x - fadeStart) / (canvas.width - fadeStart)));
+                    
+                    if (opacity > 0 && dataIndex < waveData.physical.length) {
+                        ctx.globalAlpha = opacity;
+                        
+                        // Physical wave (red)
+                        const physicalValue = waveData.physical[dataIndex] + 
+                            (waveData.physical[nextIndex] - waveData.physical[dataIndex]) * interpolation;
+                        const physicalY = centerY - (physicalValue * amplitude);
+                        ctx.fillStyle = colors.physical;
+                        ctx.fillRect(x - dotSize/2, physicalY - dotSize/2, dotSize, dotSize);
+                        
+                        // Sensitivity wave (yellow)
+                        const sensitivityValue = waveData.sensitivity[dataIndex] + 
+                            (waveData.sensitivity[nextIndex] - waveData.sensitivity[dataIndex]) * interpolation;
+                        const sensitivityY = centerY - (sensitivityValue * amplitude);
+                        ctx.fillStyle = colors.sensitivity;
+                        ctx.fillRect(x - dotSize/2, sensitivityY - dotSize/2, dotSize, dotSize);
+                        
+                        // Intellectual wave (cyan)
+                        const intellectualValue = waveData.intellectual[dataIndex] + 
+                            (waveData.intellectual[nextIndex] - waveData.intellectual[dataIndex]) * interpolation;
+                        const intellectualY = centerY - (intellectualValue * amplitude);
+                        ctx.fillStyle = colors.intellectual;
+                        ctx.fillRect(x - dotSize/2, intellectualY - dotSize/2, dotSize, dotSize);
+                        
+                        ctx.globalAlpha = 1;
+                    }
+                }
+            }
+            
+            // Draw vertical indicators for each data point when paused
+            if (!isAnimating) {
+                ctx.strokeStyle = '#5c94fc';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 4]);
+                
+                for (let i = 0; i < vitalReadings.length; i++) {
+                    const xPos = (i / vitalReadings.length) * canvas.width;
+                    ctx.beginPath();
+                    ctx.moveTo(xPos, 0);
+                    ctx.lineTo(xPos, canvas.height);
+                    ctx.stroke();
+                    
+                    // Label the data point
+                    if (i === currentDataPointIndex) {
+                        ctx.fillStyle = '#ffa800';
+                        ctx.font = '10px Courier New';
+                        ctx.fillText(`${i + 1}`, xPos - 5, 10);
+                    }
+                }
+                ctx.setLineDash([]);
+            }
+            
+            // Draw SAGE reading line (always visible)
+            const readingX = (currentDataPointIndex / vitalReadings.length) * canvas.width;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(readingX, 0);
+            ctx.lineTo(readingX, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+            
+            // Label the SAGE reading point
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Courier New';
+            ctx.fillText('SAGE', readingX - 15, canvas.height - 5);
+            
+            // Update current values and divination
+            if (waveData.physical.length > 0) {
+                const physicalVal = waveData.physical[currentDataPointIndex];
+                const sensitivityVal = waveData.sensitivity[currentDataPointIndex];
+                const intellectualVal = waveData.intellectual[currentDataPointIndex];
+                
+                document.getElementById('physical-value').textContent = 
+                    Math.round(physicalVal).toString().padStart(2, ' ');
+                document.getElementById('sensitivity-value').textContent = 
+                    Math.round(sensitivityVal).toString().padStart(2, ' ');
+                document.getElementById('intellectual-value').textContent = 
+                    Math.round(intellectualVal).toString().padStart(2, ' ');
+                
+                // Binary divination - above 0 is good (1), below is bad (0)
+                const physicalBit = physicalVal > 0 ? 1 : 0;
+                const sensitivityBit = sensitivityVal > 0 ? 1 : 0;
+                const intellectualBit = intellectualVal > 0 ? 1 : 0;
+                const binaryPattern = `${physicalBit}${sensitivityBit}${intellectualBit}`;
+                
+                updateDivination(binaryPattern);
+            }
+            
+            // Update data count
+            document.getElementById('data-count').textContent = `DATA POINTS: ${vitalReadings.length}`;
+            
+            animationFrame++;
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function addVitals() {
+            const babyName = document.getElementById('baby-name-input').value;
+            if (babyName) {
+                document.getElementById('baby-name').textContent = babyName.toUpperCase().slice(0, 10);
+            }
+            
+            const hr = parseFloat(document.getElementById('hr-input').value);
+            const rr = parseFloat(document.getElementById('rr-input').value);
+            const spo2 = parseFloat(document.getElementById('spo2-input').value);
+            const temp = parseFloat(document.getElementById('temp-input').value);
+            
+            if (!isNaN(hr) && !isNaN(rr) && !isNaN(spo2) && !isNaN(temp)) {
+                const currentStatus = updateVitalStatus();
+                
+                vitalReadings.push({
+                    timestamp: Date.now(),
+                    hr, rr, spo2, temp,
+                    status: currentStatus
+                });
+                
+                // Update wave data
+                updateWaveData();
+                updateDataConsole();
+                updateStatusMessage();
+                
+                // Clear inputs
+                document.getElementById('hr-input').value = '';
+                document.getElementById('rr-input').value = '';
+                document.getElementById('spo2-input').value = '';
+                document.getElementById('temp-input').value = '';
+                
+                // Reset status indicators
+                ['hr-status', 'rr-status', 'spo2-status', 'temp-status'].forEach(id => {
+                    document.getElementById(id).className = 'vital-status';
+                });
+                
+                // Reset animation frame to see new data immediately
+                if (vitalReadings.length <= 2) {
+                    animationFrame = 0;
+                }
+            }
+        }
+        
+        function clearData() {
+            vitalReadings = [];
+            waveData = {
+                physical: [],
+                sensitivity: [],
+                intellectual: []
+            };
+            animationFrame = 0;
+            updateDataConsole();
+            document.getElementById('status-message').textContent = 'WAITING FOR DATA...';
+            document.getElementById('status-message').style.color = '#ffa800';
+            document.getElementById('current-time').textContent = 'CURRENT TIME: --';
+        }
+        
+        function generateDemoData() {
+            clearData();
+            
+            // Generate smooth demo data
+            for (let i = 0; i < 30; i++) {
+                const phase = i * 0.2;
+                
+                // Generate smoothly varying vitals
+                const hr = 150 + Math.sin(phase) * 20;
+                const rr = 45 + Math.sin(phase * 1.3) * 10;
+                const spo2 = 95 + Math.sin(phase * 0.8) * 3;
+                const temp = 36.5 + Math.sin(phase * 0.5) * 0.5;
+                
+                const status = {
+                    hr: checkVital(hr, 'hr') ? 1 : 0,
+                    rr: checkVital(rr, 'rr') ? 1 : 0,
+                    spo2: checkVital(spo2, 'spo2') ? 1 : 0,
+                    temp: checkVital(temp, 'temp') ? 1 : 0
+                };
+                
+                vitalReadings.push({
+                    timestamp: Date.now() + i * 60000,
+                    hr, rr, spo2, temp,
+                    status
+                });
+            }
+            
+            updateWaveData();
+            updateDataConsole();
+            animationFrame = 0;
+            updateStatusMessage();
+        }
+        
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            document.getElementById('anim-button').textContent = isAnimating ? 'PAUSE' : 'PLAY';
+            if (isAnimating && !animationId) {
+                animate();
+            }
+        }
+        
+        function updateDivination(pattern) {
+            const divElement = document.getElementById('divination-message');
+            let message = '';
+            let className = '';
+            
+            switch(pattern) {
+                case '111':
+                    message = 'DATA SPEAKS: ALL SYSTEMS GOOD';
+                    className = 'all-good';
+                    break;
+                case '000':
+                    message = 'DATA SPEAKS: CRITICAL STATE';
+                    className = 'all-bad';
+                    break;
+                case '110':
+                    message = 'DATA SPEAKS: WATCH OXYGEN';
+                    className = 'mixed';
+                    break;
+                case '101':
+                    message = 'DATA SPEAKS: CHECK BREATHING';
+                    className = 'mixed';
+                    break;
+                case '011':
+                    message = 'DATA SPEAKS: MONITOR VITALS';
+                    className = 'mixed';
+                    break;
+                case '100':
+                    message = 'DATA SPEAKS: RESPIRATORY CONCERN';
+                    className = 'mixed';
+                    break;
+                case '010':
+                    message = 'DATA SPEAKS: OXYGEN ISSUE';
+                    className = 'mixed';
+                    break;
+                case '001':
+                    message = 'DATA SPEAKS: TEMPERATURE/HR ALERT';
+                    className = 'mixed';
+                    break;
+                default:
+                    message = 'DATA SPEAKS: READING...';
+                    className = '';
+            }
+            
+            divElement.textContent = message;
+            divElement.className = 'divination-message ' + className;
+        }
+        
+        // Initialize
+        updateDate();
+        animate();
+        
+        // Update date every minute
+        setInterval(updateDate, 60000);
+    </script>
 </body>
 </html>
