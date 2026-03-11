@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NES Biorhythm Recreation</title>
+    <style>
+        @font-face {
+            font-family: 'NES';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .nes-container {
+            width: 768px;
+            background-color: #000;
+            border: 4px solid #c42110;
+            padding: 20px;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        .title {
+            text-align: center;
+            font-size: 24px;
+            letter-spacing: 8px;
+            margin-bottom: 10px;
+            color: #5c94fc;
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        .info-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #5c94fc;
+        }
+        
+        #biorhythm-display {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background-color: #000;
+            border: 2px solid #5c94fc;
+            margin-bottom: 20px;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        .stats {
+            margin-top: 20px;
+        }
+        
+        .stat-line {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #5c94fc;
+            display: flex;
+            align-items: center;
+        }
+        
+        .stat-label {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .stat-label.red { color: #f83800; }
+        .stat-label.yellow { color: #ffa800; }
+        .stat-label.cyan { color: #00e8d8; }
+        
+        .stat-name {
+            display: inline-block;
+            width: 200px;
+        }
+        
+        .dots {
+            display: inline-block;
+            color: #686868;
+            letter-spacing: 4px;
+        }
+        
+        .stat-value {
+            display: inline-block;
+            width: 80px;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        input {
+            background-color: #000;
+            color: #5c94fc;
+            border: 2px solid #5c94fc;
+            padding: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            margin: 0 5px;
+        }
+        
+        button {
+            background-color: #5c94fc;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        
+        button:hover {
+            background-color: #f83800;
+        }
+    </style>
+</head>
+<body>
+    <div class="nes-container">
+        <div class="title">BIORHYTHM</div>
+        
+        <div class="info-line">
+            <span id="player-name">KANSAS</span>
+            <span id="game-number">GAME002</span>
+            <span id="current-date">10/23/89</span>
+        </div>
+        
+        <div id="biorhythm-display">
+            <canvas id="biorhythm-canvas"></canvas>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-line">
+                <span class="stat-label red">++</span>
+                <span class="stat-name">PHYSICAL</span>
+                <span class="dots">........</span>
+                <span class="stat-value" id="physical-value">-8</span>
+            </div>
+            <div class="stat-line">
+                <span class="stat-label yellow">++</span>
+                <span class="stat-name">SENSITIVITY</span>
+                <span class="dots">.....</span>
+                <span class="stat-value" id="sensitivity-value">2</span>
+            </div>
+            <div class="stat-line">
+                <span class="stat-label cyan">++</span>
+                <span class="stat-name">INTELLECTUAL</span>
+                <span class="dots">....</span>
+                <span class="stat-value" id="intellectual-value">0</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <label>DOB: </label>
+            <input type="date" id="dob-input" value="1970-01-01">
+            <label>Current Date: </label>
+            <input type="date" id="current-date-input" value="1989-10-23">
+            <button onclick="updateBiorhythm()">Calculate</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('biorhythm-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas resolution
+        canvas.width = 764;
+        canvas.height = 396;
+        
+        // Biorhythm cycles (in days)
+        const cycles = {
+            physical: 23,
+            sensitivity: 28,
+            intellectual: 33
+        };
+        
+        // NES-style colors
+        const colors = {
+            physical: '#f83800',      // Red
+            sensitivity: '#ffa800',   // Yellow/Orange
+            intellectual: '#00e8d8',  // Cyan
+            grid: '#0a4f0a',         // Dark green
+            gridBright: '#1a7f1a'    // Bright green
+        };
+        
+        function drawGrid() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = colors.grid;
+            ctx.lineWidth = 1;
+            
+            // Vertical lines (31 lines for days)
+            for (let i = 0; i < 31; i++) {
+                const x = (i / 30) * canvas.width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines (17 lines from -8 to +8)
+            for (let i = 0; i < 17; i++) {
+                const y = (i / 16) * canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw center line (0 line) - brighter
+            ctx.strokeStyle = colors.gridBright;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            // Draw left axis labels
+            ctx.fillStyle = colors.gridBright;
+            ctx.font = '16px Courier New';
+            ctx.fillText('+', 5, 20);
+            ctx.fillText('0', 5, canvas.height / 2 + 5);
+            ctx.fillText('-', 5, canvas.height - 10);
+        }
+        
+        function calculateBiorhythm(daysElapsed, cycleLength) {
+            return Math.sin(2 * Math.PI * daysElapsed / cycleLength);
+        }
+        
+        function plotBiorhythm(dob, currentDate) {
+            drawGrid();
+            
+            const msPerDay = 24 * 60 * 60 * 1000;
+            const daysElapsed = Math.floor((currentDate - dob) / msPerDay);
+            
+            // Calculate current values
+            const values = {
+                physical: calculateBiorhythm(daysElapsed, cycles.physical),
+                sensitivity: calculateBiorhythm(daysElapsed, cycles.sensitivity),
+                intellectual: calculateBiorhythm(daysElapsed, cycles.intellectual)
+            };
+            
+            // Update display values (scale to -8 to +8)
+            document.getElementById('physical-value').textContent = 
+                Math.round(values.physical * 8).toString().padStart(2, ' ');
+            document.getElementById('sensitivity-value').textContent = 
+                Math.round(values.sensitivity * 8).toString().padStart(2, ' ');
+            document.getElementById('intellectual-value').textContent = 
+                Math.round(values.intellectual * 8).toString().padStart(2, ' ');
+            
+            // Plot each biorhythm as dots (NES style)
+            const dotSize = 4;
+            const centerY = canvas.height / 2;
+            const amplitude = canvas.height / 2 - 10;
+            
+            // Plot 31 days (current day in center)
+            for (let day = -15; day <= 15; day++) {
+                const x = ((day + 15) / 30) * canvas.width;
+                const currentDaysElapsed = daysElapsed + day;
+                
+                // Physical (red)
+                const physicalValue = calculateBiorhythm(currentDaysElapsed, cycles.physical);
+                const physicalY = centerY - (physicalValue * amplitude);
+                ctx.fillStyle = colors.physical;
+                ctx.fillRect(x - dotSize/2, physicalY - dotSize/2, dotSize, dotSize);
+                
+                // Sensitivity (yellow)
+                const sensitivityValue = calculateBiorhythm(currentDaysElapsed, cycles.sensitivity);
+                const sensitivityY = centerY - (sensitivityValue * amplitude);
+                ctx.fillStyle = colors.sensitivity;
+                ctx.fillRect(x - dotSize/2, sensitivityY - dotSize/2, dotSize, dotSize);
+                
+                // Intellectual (cyan)
+                const intellectualValue = calculateBiorhythm(currentDaysElapsed, cycles.intellectual);
+                const intellectualY = centerY - (intellectualValue * amplitude);
+                ctx.fillStyle = colors.intellectual;
+                ctx.fillRect(x - dotSize/2, intellectualY - dotSize/2, dotSize, dotSize);
+            }
+            
+            // Draw current day indicator (vertical line)
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+        
+        function updateBiorhythm() {
+            const dobInput = document.getElementById('dob-input').value;
+            const currentInput = document.getElementById('current-date-input').value;
+            
+            if (!dobInput || !currentInput) {
+                alert('Please enter both dates');
+                return;
+            }
+            
+            const dob = new Date(dobInput);
+            const currentDate = new Date(currentInput);
+            
+            // Update display date
+            const displayDate = (currentDate.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                              currentDate.getDate().toString().padStart(2, '0') + '/' +
+                              currentDate.getFullYear().toString().substr(2);
+            document.getElementById('current-date').textContent = displayDate;
+            
+            plotBiorhythm(dob, currentDate);
+        }
+        
+        // Initial plot
+        updateBiorhythm();
+    </script>
+</body>
+</html>

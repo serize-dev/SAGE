@@ -1,0 +1,1216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.A.G.E. - System for Algorithmic Generation of Evaluations</title>
+    <style>
+        @font-face {
+            font-family: 'NES';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        
+        .main-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .nes-container {
+            width: 768px;
+            background-color: #000;
+            border: 4px solid #c42110;
+            padding: 20px;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        .data-console {
+            width: 400px;
+            background-color: #000;
+            border: 4px solid #5c94fc;
+            padding: 20px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .console-title {
+            text-align: center;
+            font-size: 18px;
+            color: #5c94fc;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+        
+        .data-entry {
+            background-color: #1a1a1a;
+            border: 2px solid #5c94fc;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .data-entry.active {
+            border-color: #ffa800;
+            box-shadow: 0 0 10px #ffa800;
+        }
+        
+        .data-entry-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            color: #ffa800;
+        }
+        
+        .data-entry-time {
+            color: #00e8d8;
+        }
+        
+        .data-entry-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .data-entry-controls button {
+            padding: 2px 8px;
+            font-size: 10px;
+        }
+        
+        .data-values {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .data-value {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .data-value label {
+            color: #5c94fc;
+            width: 50px;
+        }
+        
+        .data-value input {
+            width: 80px;
+            font-size: 12px;
+            padding: 2px 4px;
+        }
+        
+        .data-value .status-indicator {
+            width: 12px;
+            height: 12px;
+            border: 1px solid #5c94fc;
+            margin-left: 5px;
+        }
+        
+        .data-value .status-indicator.good {
+            background-color: #00e8d8;
+        }
+        
+        .data-value .status-indicator.bad {
+            background-color: #f83800;
+        }
+        
+        .biorhythm-values {
+            border-top: 1px solid #5c94fc;
+            padding-top: 8px;
+            font-size: 11px;
+        }
+        
+        .biorhythm-value {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        
+        .biorhythm-value .label {
+            width: 100px;
+        }
+        
+        .biorhythm-value.physical { color: #f83800; }
+        .biorhythm-value.sensitivity { color: #ffa800; }
+        .biorhythm-value.intellectual { color: #00e8d8; }
+        
+        .title {
+            text-align: center;
+            font-size: 24px;
+            letter-spacing: 8px;
+            margin-bottom: 10px;
+            color: #5c94fc;
+            text-shadow: 2px 2px 0 #000;
+        }
+        
+        .info-line {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            margin-bottom: 20px;
+            color: #5c94fc;
+        }
+        
+        #biorhythm-display {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            background-color: #000;
+            border: 2px solid #5c94fc;
+            margin-bottom: 20px;
+            cursor: crosshair;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        
+        .stats {
+            margin-top: 20px;
+        }
+        
+        .stat-line {
+            font-size: 18px;
+            margin: 10px 0;
+            color: #5c94fc;
+            display: flex;
+            align-items: center;
+        }
+        
+        .stat-label {
+            display: inline-block;
+            width: 20px;
+            text-align: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        
+        .stat-label.red { color: #f83800; }
+        .stat-label.yellow { color: #ffa800; }
+        .stat-label.cyan { color: #00e8d8; }
+        
+        .stat-name {
+            display: inline-block;
+            width: 200px;
+        }
+        
+        .dots {
+            display: inline-block;
+            color: #686868;
+            letter-spacing: 4px;
+        }
+        
+        .stat-value {
+            display: inline-block;
+            width: 80px;
+            text-align: right;
+            font-weight: bold;
+        }
+        
+        .vitals-section {
+            margin-top: 30px;
+            border-top: 2px solid #5c94fc;
+            padding-top: 20px;
+        }
+        
+        .vital-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .vital-input {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .vital-label {
+            color: #5c94fc;
+            font-size: 14px;
+        }
+        
+        .vital-status {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #5c94fc;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        .vital-status.good {
+            background-color: #00e8d8;
+        }
+        
+        .vital-status.bad {
+            background-color: #f83800;
+        }
+        
+        input {
+            background-color: #000;
+            color: #5c94fc;
+            border: 2px solid #5c94fc;
+            padding: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            margin: 0 5px;
+            width: 100px;
+        }
+        
+        input.name-input {
+            width: 150px;
+        }
+        
+        button {
+            background-color: #5c94fc;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+        
+        button:hover {
+            background-color: #f83800;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .status-text {
+            font-size: 14px;
+            color: #ffa800;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .data-count {
+            font-size: 12px;
+            color: #5c94fc;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .current-time {
+            font-size: 12px;
+            color: #00e8d8;
+            text-align: center;
+            margin-top: 5px;
+        }
+        
+        .divination-message {
+            font-size: 16px;
+            text-align: center;
+            margin: 15px 0;
+            padding: 10px;
+            border: 2px solid #5c94fc;
+            background-color: #1a1a1a;
+            letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        
+        .divination-message.all-good {
+            color: #00e8d8;
+            border-color: #00e8d8;
+        }
+        
+        .divination-message.all-bad {
+            color: #f83800;
+            border-color: #f83800;
+            animation: pulse 0.5s infinite;
+        }
+        
+        .divination-message.mixed {
+            color: #ffa800;
+            border-color: #ffa800;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.8; }
+            50% { opacity: 1; }
+            100% { opacity: 0.8; }
+        }
+        
+        .legend {
+            font-size: 10px;
+            color: #5c94fc;
+            margin-top: 10px;
+            padding: 10px;
+            border: 1px solid #5c94fc;
+            background-color: #0a0a0a;
+        }
+        
+        .legend-item {
+            margin: 2px 0;
+        }
+        
+        .legend-item span {
+            color: #ffa800;
+        }
+        
+        /* Scrollbar styling */
+        .data-console::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .data-console::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border: 1px solid #5c94fc;
+        }
+        
+        .data-console::-webkit-scrollbar-thumb {
+            background: #5c94fc;
+        }
+        
+        .data-console::-webkit-scrollbar-thumb:hover {
+            background: #f83800;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="nes-container">
+            <div class="title">BIORHYTHM</div>
+            <div style="text-align: center; font-size: 10px; color: #5c94fc; margin-bottom: 10px; letter-spacing: 1px;">
+                SYSTEM FOR ALGORITHMIC GENERATION OF EVALUATIONS
+            </div>
+            
+            <div class="info-line">
+                <span id="baby-name">BABY001</span>
+                <span id="unit-name">S.A.G.E.</span>
+                <span id="current-date">10/23/89</span>
+            </div>
+            
+            <div id="biorhythm-display">
+                <canvas id="biorhythm-canvas"></canvas>
+                <div id="data-marker" style="position: absolute; display: none; pointer-events: none;">
+                    <div style="width: 2px; height: 400px; background: #fff; opacity: 0.8;"></div>
+                    <div style="position: absolute; top: -20px; left: -30px; background: #000; border: 1px solid #fff; padding: 2px 5px; font-size: 10px; white-space: nowrap;" id="marker-label"></div>
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-line">
+                    <span class="stat-label red">++</span>
+                    <span class="stat-name">PHYSICAL</span>
+                    <span class="dots">........</span>
+                    <span class="stat-value" id="physical-value">0</span>
+                </div>
+                <div class="stat-line">
+                    <span class="stat-label yellow">++</span>
+                    <span class="stat-name">SENSITIVITY</span>
+                    <span class="dots">.....</span>
+                    <span class="stat-value" id="sensitivity-value">0</span>
+                </div>
+                <div class="stat-line">
+                    <span class="stat-label cyan">++</span>
+                    <span class="stat-name">INTELLECTUAL</span>
+                    <span class="dots">....</span>
+                    <span class="stat-value" id="intellectual-value">0</span>
+                </div>
+            </div>
+            
+            <div class="divination-message" id="divination-message">
+                DATA SPEAKS: WAITING...
+            </div>
+            
+            <div class="vitals-section">
+                <div class="vital-grid">
+                    <div class="vital-input">
+                        <span class="vital-label">HR:</span>
+                        <div>
+                            <input type="number" id="hr-input" placeholder="150" min="0" max="300">
+                            <span class="vital-status" id="hr-status"></span>
+                        </div>
+                    </div>
+                    <div class="vital-input">
+                        <span class="vital-label">RR:</span>
+                        <div>
+                            <input type="number" id="rr-input" placeholder="40" min="0" max="100">
+                            <span class="vital-status" id="rr-status"></span>
+                        </div>
+                    </div>
+                    <div class="vital-input">
+                        <span class="vital-label">SpO2:</span>
+                        <div>
+                            <input type="number" id="spo2-input" placeholder="95" min="0" max="100">
+                            <span class="vital-status" id="spo2-status"></span>
+                        </div>
+                    </div>
+                    <div class="vital-input">
+                        <span class="vital-label">TEMP:</span>
+                        <div>
+                            <input type="number" id="temp-input" placeholder="36.5" step="0.1" min="30" max="42">
+                            <span class="vital-status" id="temp-status"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <input type="text" id="baby-name-input" class="name-input" placeholder="Baby Name" value="BABY001">
+                    <button onclick="addVitals()">ADD VITALS</button>
+                    <button onclick="clearData()">CLEAR DATA</button>
+                    <button onclick="generateDemoData()">DEMO DATA</button>
+                    <button onclick="toggleAnimation()" id="anim-button">PAUSE</button>
+                </div>
+                
+                <div class="status-text" id="status-message">
+                    WAITING FOR DATA...
+                </div>
+                <div class="data-count" id="data-count">
+                    DATA POINTS: 0
+                </div>
+                <div class="current-time" id="current-time">
+                    CURRENT TIME: --
+                </div>
+                
+                <div class="legend">
+                    <div class="legend-item">PHYSICAL: <span>HR + TEMP</span></div>
+                    <div class="legend-item">SENSITIVITY: <span>RESP RATE</span></div>
+                    <div class="legend-item">INTELLECTUAL: <span>SpO2</span></div>
+                    <div class="legend-item" style="margin-top: 5px; color: #00e8d8;">ABOVE LINE = GOOD (1)</div>
+                    <div class="legend-item" style="color: #f83800;">BELOW LINE = BAD (0)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="data-console">
+            <div class="console-title">DATA CONSOLE</div>
+            <div id="data-entries"></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('biorhythm-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas resolution
+        canvas.width = 764;
+        canvas.height = 396;
+        
+        // Animation variables
+        let animationFrame = 0;
+        let isAnimating = true;
+        let animationId = null;
+        let currentDataPointIndex = 0;
+        
+        // Vital data storage
+        let vitalReadings = [];
+        
+        // Wave data - stores the calculated biorhythm values
+        let waveData = {
+            physical: [],
+            sensitivity: [],
+            intellectual: []
+        };
+        
+        // NICU Vital Ranges
+        const vitalRanges = {
+            hr: { min: 120, max: 180 },
+            rr: { min: 30, max: 60 },
+            spo2: { min: 92, max: 100 },
+            temp: { min: 36.0, max: 37.5 }
+        };
+        
+        // NES-style colors
+        const colors = {
+            physical: '#f83800',      // Red
+            sensitivity: '#ffa800',   // Yellow/Orange
+            intellectual: '#00e8d8',  // Cyan
+            grid: '#0a4f0a',         // Dark green
+            gridBright: '#1a7f1a'    // Bright green
+        };
+        
+        function updateDate() {
+            const now = new Date();
+            const displayDate = (now.getMonth() + 1).toString().padStart(2, '0') + '/' +
+                              now.getDate().toString().padStart(2, '0') + '/' +
+                              now.getFullYear().toString().substr(2);
+            document.getElementById('current-date').textContent = displayDate;
+        }
+        
+        function checkVital(value, type) {
+            const range = vitalRanges[type];
+            return value >= range.min && value <= range.max;
+        }
+        
+        function updateVitalStatus() {
+            const hrValue = parseFloat(document.getElementById('hr-input').value);
+            const rrValue = parseFloat(document.getElementById('rr-input').value);
+            const spo2Value = parseFloat(document.getElementById('spo2-input').value);
+            const tempValue = parseFloat(document.getElementById('temp-input').value);
+            
+            let currentStatus = { hr: 0, rr: 0, spo2: 0, temp: 0 };
+            
+            if (!isNaN(hrValue)) {
+                currentStatus.hr = checkVital(hrValue, 'hr') ? 1 : 0;
+                document.getElementById('hr-status').className = 'vital-status ' + (currentStatus.hr ? 'good' : 'bad');
+            }
+            
+            if (!isNaN(rrValue)) {
+                currentStatus.rr = checkVital(rrValue, 'rr') ? 1 : 0;
+                document.getElementById('rr-status').className = 'vital-status ' + (currentStatus.rr ? 'good' : 'bad');
+            }
+            
+            if (!isNaN(spo2Value)) {
+                currentStatus.spo2 = checkVital(spo2Value, 'spo2') ? 1 : 0;
+                document.getElementById('spo2-status').className = 'vital-status ' + (currentStatus.spo2 ? 'good' : 'bad');
+            }
+            
+            if (!isNaN(tempValue)) {
+                currentStatus.temp = checkVital(tempValue, 'temp') ? 1 : 0;
+                document.getElementById('temp-status').className = 'vital-status ' + (currentStatus.temp ? 'good' : 'bad');
+            }
+            
+            return currentStatus;
+        }
+        
+        // Add event listeners for real-time updates
+        ['hr-input', 'rr-input', 'spo2-input', 'temp-input'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateVitalStatus);
+        });
+        
+        // Add click handler for selecting data points on grid
+        canvas.addEventListener('click', function(e) {
+            if (vitalReadings.length === 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const clickProgress = x / canvas.width;
+            const dataIndex = Math.floor(clickProgress * vitalReadings.length);
+            
+            if (dataIndex >= 0 && dataIndex < vitalReadings.length) {
+                currentDataPointIndex = dataIndex;
+                highlightActiveDataPoint(dataIndex);
+                
+                // Calculate the animation frame that corresponds to this data point
+                const dataLength = waveData.physical.length;
+                const cycleLength = dataLength * 20; // Must match the cycleLength in animate()
+                animationFrame = (dataIndex / dataLength) * cycleLength;
+                
+                // Update displays for selected point
+                const reading = vitalReadings[dataIndex];
+                const time = new Date(reading.timestamp);
+                const timeStr = time.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+                document.getElementById('current-time').textContent = `SELECTED: ${timeStr}`;
+                
+                // Flash the selection
+                const marker = document.getElementById('data-marker');
+                marker.style.display = 'block';
+                marker.style.left = x + 'px';
+                document.getElementById('marker-label').textContent = `POINT ${dataIndex + 1}`;
+                
+                setTimeout(() => {
+                    marker.style.display = 'none';
+                }, 2000);
+            }
+        });
+        
+        // Add hover effect
+        canvas.addEventListener('mousemove', function(e) {
+            if (vitalReadings.length === 0) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const hoverProgress = x / canvas.width;
+            const dataIndex = Math.floor(hoverProgress * vitalReadings.length);
+            
+            if (dataIndex >= 0 && dataIndex < vitalReadings.length) {
+                canvas.style.cursor = 'pointer';
+                canvas.title = `Click to select data point ${dataIndex + 1}`;
+            }
+        });
+        
+        function drawGrid() {
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw grid lines
+            ctx.strokeStyle = colors.grid;
+            ctx.lineWidth = 1;
+            
+            // Vertical lines
+            for (let i = 0; i < 31; i++) {
+                const x = (i / 30) * canvas.width;
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            
+            // Horizontal lines (17 lines from -8 to +8)
+            for (let i = 0; i < 17; i++) {
+                const y = (i / 16) * canvas.height;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+            
+            // Draw center line (0 line) - brighter
+            ctx.strokeStyle = colors.gridBright;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            
+            // Draw axis markers (+ at top, 0 at center, - at bottom)
+            ctx.fillStyle = colors.gridBright;
+            ctx.font = '16px Courier New';
+            ctx.fillText('+', 5, 20);
+            ctx.fillText('0', 5, canvas.height / 2 + 5);
+            ctx.fillText('-', 5, canvas.height - 10);
+        }
+        
+        function calculateBiorhythmValue(hr, rr, spo2, temp, type) {
+            // Normalize vital values to -1 to 1 range
+            const hrNorm = (hr - vitalRanges.hr.min) / (vitalRanges.hr.max - vitalRanges.hr.min) * 2 - 1;
+            const rrNorm = (rr - vitalRanges.rr.min) / (vitalRanges.rr.max - vitalRanges.rr.min) * 2 - 1;
+            const spo2Norm = (spo2 - vitalRanges.spo2.min) / (vitalRanges.spo2.max - vitalRanges.spo2.min) * 2 - 1;
+            const tempNorm = (temp - vitalRanges.temp.min) / (vitalRanges.temp.max - vitalRanges.temp.min) * 2 - 1;
+            
+            // Calculate biorhythm based on vital combinations
+            let value = 0;
+            switch(type) {
+                case 'physical':
+                    // Physical based on HR and Temperature
+                    value = (hrNorm + tempNorm) / 2;
+                    break;
+                case 'sensitivity':
+                    // Sensitivity based on RR
+                    value = rrNorm;
+                    break;
+                case 'intellectual':
+                    // Intellectual based on SpO2
+                    value = spo2Norm;
+                    break;
+            }
+            
+            // Scale to -8 to +8 range
+            return value * 8;
+        }
+        
+        function updateWaveData() {
+            // Generate wave data from vital readings
+            waveData = {
+                physical: [],
+                sensitivity: [],
+                intellectual: []
+            };
+            
+            vitalReadings.forEach(reading => {
+                const physical = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'physical'
+                );
+                const sensitivity = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'sensitivity'
+                );
+                const intellectual = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'intellectual'
+                );
+                
+                waveData.physical.push(physical);
+                waveData.sensitivity.push(sensitivity);
+                waveData.intellectual.push(intellectual);
+            });
+        }
+        
+        function updateDataConsole() {
+            const container = document.getElementById('data-entries');
+            container.innerHTML = '';
+            
+            vitalReadings.forEach((reading, index) => {
+                const date = new Date(reading.timestamp);
+                const timeStr = date.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+                const dateStr = date.toLocaleDateString('en-US', { 
+                    month: '2-digit', 
+                    day: '2-digit', 
+                    year: '2-digit' 
+                });
+                
+                const physical = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'physical'
+                );
+                const sensitivity = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'sensitivity'
+                );
+                const intellectual = calculateBiorhythmValue(
+                    reading.hr, reading.rr, reading.spo2, reading.temp, 'intellectual'
+                );
+                
+                const entryDiv = document.createElement('div');
+                entryDiv.className = 'data-entry';
+                entryDiv.id = `entry-${index}`;
+                entryDiv.innerHTML = `
+                    <div class="data-entry-header">
+                        <span>POINT ${index + 1}</span>
+                        <span class="data-entry-time">${dateStr} ${timeStr}</span>
+                        <div class="data-entry-controls">
+                            <button onclick="updateDataPoint(${index})">UPDATE</button>
+                            <button onclick="deleteDataPoint(${index})">DELETE</button>
+                        </div>
+                    </div>
+                    <div class="data-values">
+                        <div class="data-value">
+                            <label>HR:</label>
+                            <input type="number" id="hr-${index}" value="${reading.hr.toFixed(0)}" min="0" max="300">
+                            <span class="status-indicator ${reading.status.hr ? 'good' : 'bad'}"></span>
+                        </div>
+                        <div class="data-value">
+                            <label>RR:</label>
+                            <input type="number" id="rr-${index}" value="${reading.rr.toFixed(0)}" min="0" max="100">
+                            <span class="status-indicator ${reading.status.rr ? 'good' : 'bad'}"></span>
+                        </div>
+                        <div class="data-value">
+                            <label>SpO2:</label>
+                            <input type="number" id="spo2-${index}" value="${reading.spo2.toFixed(0)}" min="0" max="100">
+                            <span class="status-indicator ${reading.status.spo2 ? 'good' : 'bad'}"></span>
+                        </div>
+                        <div class="data-value">
+                            <label>TEMP:</label>
+                            <input type="number" id="temp-${index}" value="${reading.temp.toFixed(1)}" step="0.1" min="30" max="42">
+                            <span class="status-indicator ${reading.status.temp ? 'good' : 'bad'}"></span>
+                        </div>
+                    </div>
+                    <div class="biorhythm-values">
+                        <div class="biorhythm-value physical">
+                            <span class="label">PHYSICAL:</span>
+                            <span>${physical.toFixed(1)}</span>
+                        </div>
+                        <div class="biorhythm-value sensitivity">
+                            <span class="label">SENSITIVITY:</span>
+                            <span>${sensitivity.toFixed(1)}</span>
+                        </div>
+                        <div class="biorhythm-value intellectual">
+                            <span class="label">INTELLECTUAL:</span>
+                            <span>${intellectual.toFixed(1)}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(entryDiv);
+            });
+        }
+        
+        function highlightActiveDataPoint(index) {
+            // Remove active class from all entries
+            document.querySelectorAll('.data-entry').forEach(entry => {
+                entry.classList.remove('active');
+            });
+            
+            // Add active class to current entry
+            const activeEntry = document.getElementById(`entry-${index}`);
+            if (activeEntry) {
+                activeEntry.classList.add('active');
+                // Scroll into view if needed
+                activeEntry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+        
+        function updateDataPoint(index) {
+            const hr = parseFloat(document.getElementById(`hr-${index}`).value);
+            const rr = parseFloat(document.getElementById(`rr-${index}`).value);
+            const spo2 = parseFloat(document.getElementById(`spo2-${index}`).value);
+            const temp = parseFloat(document.getElementById(`temp-${index}`).value);
+            
+            if (!isNaN(hr) && !isNaN(rr) && !isNaN(spo2) && !isNaN(temp)) {
+                vitalReadings[index].hr = hr;
+                vitalReadings[index].rr = rr;
+                vitalReadings[index].spo2 = spo2;
+                vitalReadings[index].temp = temp;
+                vitalReadings[index].status = {
+                    hr: checkVital(hr, 'hr') ? 1 : 0,
+                    rr: checkVital(rr, 'rr') ? 1 : 0,
+                    spo2: checkVital(spo2, 'spo2') ? 1 : 0,
+                    temp: checkVital(temp, 'temp') ? 1 : 0
+                };
+                
+                updateWaveData();
+                updateDataConsole();
+                updateStatusMessage();
+                
+                // Draw a vertical marker for new data point
+                const marker = document.getElementById('data-marker');
+                const xPos = (vitalReadings.length - 1) / vitalReadings.length * canvas.width;
+                marker.style.display = 'block';
+                marker.style.left = xPos + 'px';
+                document.getElementById('marker-label').textContent = 'NEW';
+                
+                setTimeout(() => {
+                    marker.style.display = 'none';
+                }, 1500);
+            }
+        }
+        
+        function deleteDataPoint(index) {
+            vitalReadings.splice(index, 1);
+            updateWaveData();
+            updateDataConsole();
+            updateStatusMessage();
+            
+            // Update data count
+            document.getElementById('data-count').textContent = `DATA POINTS: ${vitalReadings.length}`;
+        }
+        
+        function updateStatusMessage() {
+            if (vitalReadings.length === 0) {
+                document.getElementById('status-message').textContent = 'WAITING FOR DATA...';
+                document.getElementById('status-message').style.color = '#ffa800';
+                return;
+            }
+            
+            const lastReading = vitalReadings[vitalReadings.length - 1];
+            const totalGood = Object.values(lastReading.status).reduce((a, b) => a + b, 0);
+            const statusEl = document.getElementById('status-message');
+            if (totalGood === 4) {
+                statusEl.textContent = 'ALL SYSTEMS NORMAL';
+                statusEl.style.color = '#00e8d8';
+            } else {
+                statusEl.textContent = `WARNING - ${4 - totalGood} VITAL(S) ABNORMAL`;
+                statusEl.style.color = '#f83800';
+            }
+        }
+        
+        function animate() {
+            if (!isAnimating) return;
+            
+            drawGrid();
+            
+            if (vitalReadings.length === 0) {
+                animationId = requestAnimationFrame(animate);
+                return;
+            }
+            
+            const dotSize = 4;
+            const centerY = canvas.height / 2;
+            const amplitude = (canvas.height / 2 - 10) / 8; // Scale for -8 to +8 range
+            
+            // TRUE SNAKE EFFECT - dots moving left to right
+            const dotsPerWave = 30; // Number of dots visible per wave
+            const scrollSpeed = 1.5; // Animation speed
+            const scrollOffset = animationFrame * scrollSpeed;
+            
+            // Calculate which data points we're showing based on scroll position
+            const dataLength = waveData.physical.length;
+            const cycleLength = dataLength * 20; // Pixels per data cycle
+            const currentCycle = Math.floor(scrollOffset / cycleLength);
+            const cycleProgress = (scrollOffset % cycleLength) / cycleLength;
+            
+            // Update current data point based on cycle progress
+            currentDataPointIndex = Math.floor(cycleProgress * dataLength) % dataLength;
+            
+            // Update displays
+            if (vitalReadings[currentDataPointIndex]) {
+                const currentTime = new Date(vitalReadings[currentDataPointIndex].timestamp);
+                const timeStr = currentTime.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit' 
+                });
+                document.getElementById('current-time').textContent = `CURRENT TIME: ${timeStr}`;
+                highlightActiveDataPoint(currentDataPointIndex);
+            }
+            
+            // Draw the snake of dots
+            for (let i = 0; i < dotsPerWave * 3; i++) { // 3x for smoother coverage
+                // Calculate x position - dots move left to right
+                const x = ((scrollOffset + i * 8) % (canvas.width + 200)) - 100;
+                
+                // Only draw if on screen
+                if (x >= -10 && x <= canvas.width + 10) {
+                    // Calculate which data point this x position corresponds to
+                    const dataProgress = (x / canvas.width) * dataLength;
+                    const dataIndex = Math.floor(dataProgress) % dataLength;
+                    const nextIndex = (dataIndex + 1) % dataLength;
+                    const interpolation = dataProgress - Math.floor(dataProgress);
+                    
+                    // Fade effect - dots fade as they approach right edge
+                    const fadeStart = canvas.width * 0.7;
+                    const opacity = x < fadeStart ? 1 : Math.max(0, 1 - ((x - fadeStart) / (canvas.width - fadeStart)));
+                    
+                    if (opacity > 0 && dataIndex < waveData.physical.length) {
+                        ctx.globalAlpha = opacity;
+                        
+                        // Physical wave (red)
+                        const physicalValue = waveData.physical[dataIndex] + 
+                            (waveData.physical[nextIndex] - waveData.physical[dataIndex]) * interpolation;
+                        const physicalY = centerY - (physicalValue * amplitude);
+                        ctx.fillStyle = colors.physical;
+                        ctx.fillRect(x - dotSize/2, physicalY - dotSize/2, dotSize, dotSize);
+                        
+                        // Sensitivity wave (yellow)
+                        const sensitivityValue = waveData.sensitivity[dataIndex] + 
+                            (waveData.sensitivity[nextIndex] - waveData.sensitivity[dataIndex]) * interpolation;
+                        const sensitivityY = centerY - (sensitivityValue * amplitude);
+                        ctx.fillStyle = colors.sensitivity;
+                        ctx.fillRect(x - dotSize/2, sensitivityY - dotSize/2, dotSize, dotSize);
+                        
+                        // Intellectual wave (cyan)
+                        const intellectualValue = waveData.intellectual[dataIndex] + 
+                            (waveData.intellectual[nextIndex] - waveData.intellectual[dataIndex]) * interpolation;
+                        const intellectualY = centerY - (intellectualValue * amplitude);
+                        ctx.fillStyle = colors.intellectual;
+                        ctx.fillRect(x - dotSize/2, intellectualY - dotSize/2, dotSize, dotSize);
+                        
+                        ctx.globalAlpha = 1;
+                    }
+                }
+            }
+            
+            // Draw vertical indicators for each data point when paused
+            if (!isAnimating) {
+                ctx.strokeStyle = '#5c94fc';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 4]);
+                
+                for (let i = 0; i < vitalReadings.length; i++) {
+                    const xPos = (i / vitalReadings.length) * canvas.width;
+                    ctx.beginPath();
+                    ctx.moveTo(xPos, 0);
+                    ctx.lineTo(xPos, canvas.height);
+                    ctx.stroke();
+                    
+                    // Label the data point
+                    if (i === currentDataPointIndex) {
+                        ctx.fillStyle = '#ffa800';
+                        ctx.font = '10px Courier New';
+                        ctx.fillText(`${i + 1}`, xPos - 5, 10);
+                    }
+                }
+                ctx.setLineDash([]);
+            }
+            
+            // Draw SAGE reading line (always visible)
+            const readingX = (currentDataPointIndex / vitalReadings.length) * canvas.width;
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(readingX, 0);
+            ctx.lineTo(readingX, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+            
+            // Label the SAGE reading point
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Courier New';
+            ctx.fillText('SAGE', readingX - 15, canvas.height - 5);
+            
+            // Update current values and divination
+            if (waveData.physical.length > 0) {
+                const physicalVal = waveData.physical[currentDataPointIndex];
+                const sensitivityVal = waveData.sensitivity[currentDataPointIndex];
+                const intellectualVal = waveData.intellectual[currentDataPointIndex];
+                
+                document.getElementById('physical-value').textContent = 
+                    Math.round(physicalVal).toString().padStart(2, ' ');
+                document.getElementById('sensitivity-value').textContent = 
+                    Math.round(sensitivityVal).toString().padStart(2, ' ');
+                document.getElementById('intellectual-value').textContent = 
+                    Math.round(intellectualVal).toString().padStart(2, ' ');
+                
+                // Binary divination - above 0 is good (1), below is bad (0)
+                const physicalBit = physicalVal > 0 ? 1 : 0;
+                const sensitivityBit = sensitivityVal > 0 ? 1 : 0;
+                const intellectualBit = intellectualVal > 0 ? 1 : 0;
+                const binaryPattern = `${physicalBit}${sensitivityBit}${intellectualBit}`;
+                
+                updateDivination(binaryPattern);
+            }
+            
+            // Update data count
+            document.getElementById('data-count').textContent = `DATA POINTS: ${vitalReadings.length}`;
+            
+            animationFrame++;
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function addVitals() {
+            const babyName = document.getElementById('baby-name-input').value;
+            if (babyName) {
+                document.getElementById('baby-name').textContent = babyName.toUpperCase().slice(0, 10);
+            }
+            
+            const hr = parseFloat(document.getElementById('hr-input').value);
+            const rr = parseFloat(document.getElementById('rr-input').value);
+            const spo2 = parseFloat(document.getElementById('spo2-input').value);
+            const temp = parseFloat(document.getElementById('temp-input').value);
+            
+            if (!isNaN(hr) && !isNaN(rr) && !isNaN(spo2) && !isNaN(temp)) {
+                const currentStatus = updateVitalStatus();
+                
+                vitalReadings.push({
+                    timestamp: Date.now(),
+                    hr, rr, spo2, temp,
+                    status: currentStatus
+                });
+                
+                // Update wave data
+                updateWaveData();
+                updateDataConsole();
+                updateStatusMessage();
+                
+                // Clear inputs
+                document.getElementById('hr-input').value = '';
+                document.getElementById('rr-input').value = '';
+                document.getElementById('spo2-input').value = '';
+                document.getElementById('temp-input').value = '';
+                
+                // Reset status indicators
+                ['hr-status', 'rr-status', 'spo2-status', 'temp-status'].forEach(id => {
+                    document.getElementById(id).className = 'vital-status';
+                });
+                
+                // Reset animation frame to see new data immediately
+                if (vitalReadings.length <= 2) {
+                    animationFrame = 0;
+                }
+            }
+        }
+        
+        function clearData() {
+            vitalReadings = [];
+            waveData = {
+                physical: [],
+                sensitivity: [],
+                intellectual: []
+            };
+            animationFrame = 0;
+            updateDataConsole();
+            document.getElementById('status-message').textContent = 'WAITING FOR DATA...';
+            document.getElementById('status-message').style.color = '#ffa800';
+            document.getElementById('current-time').textContent = 'CURRENT TIME: --';
+        }
+        
+        function generateDemoData() {
+            clearData();
+            
+            // Generate smooth demo data
+            for (let i = 0; i < 30; i++) {
+                const phase = i * 0.2;
+                
+                // Generate smoothly varying vitals
+                const hr = 150 + Math.sin(phase) * 20;
+                const rr = 45 + Math.sin(phase * 1.3) * 10;
+                const spo2 = 95 + Math.sin(phase * 0.8) * 3;
+                const temp = 36.5 + Math.sin(phase * 0.5) * 0.5;
+                
+                const status = {
+                    hr: checkVital(hr, 'hr') ? 1 : 0,
+                    rr: checkVital(rr, 'rr') ? 1 : 0,
+                    spo2: checkVital(spo2, 'spo2') ? 1 : 0,
+                    temp: checkVital(temp, 'temp') ? 1 : 0
+                };
+                
+                vitalReadings.push({
+                    timestamp: Date.now() + i * 60000,
+                    hr, rr, spo2, temp,
+                    status
+                });
+            }
+            
+            updateWaveData();
+            updateDataConsole();
+            animationFrame = 0;
+            updateStatusMessage();
+        }
+        
+        function toggleAnimation() {
+            isAnimating = !isAnimating;
+            document.getElementById('anim-button').textContent = isAnimating ? 'PAUSE' : 'PLAY';
+            if (isAnimating && !animationId) {
+                animate();
+            }
+        }
+        
+        function updateDivination(pattern) {
+            const divElement = document.getElementById('divination-message');
+            let message = '';
+            let className = '';
+            
+            switch(pattern) {
+                case '111':
+                    message = 'DATA SPEAKS: ALL SYSTEMS GOOD';
+                    className = 'all-good';
+                    break;
+                case '000':
+                    message = 'DATA SPEAKS: CRITICAL STATE';
+                    className = 'all-bad';
+                    break;
+                case '110':
+                    message = 'DATA SPEAKS: WATCH OXYGEN';
+                    className = 'mixed';
+                    break;
+                case '101':
+                    message = 'DATA SPEAKS: CHECK BREATHING';
+                    className = 'mixed';
+                    break;
+                case '011':
+                    message = 'DATA SPEAKS: MONITOR VITALS';
+                    className = 'mixed';
+                    break;
+                case '100':
+                    message = 'DATA SPEAKS: RESPIRATORY CONCERN';
+                    className = 'mixed';
+                    break;
+                case '010':
+                    message = 'DATA SPEAKS: OXYGEN ISSUE';
+                    className = 'mixed';
+                    break;
+                case '001':
+                    message = 'DATA SPEAKS: TEMPERATURE/HR ALERT';
+                    className = 'mixed';
+                    break;
+                default:
+                    message = 'DATA SPEAKS: READING...';
+                    className = '';
+            }
+            
+            divElement.textContent = message;
+            divElement.className = 'divination-message ' + className;
+        }
+        
+        // Initialize
+        updateDate();
+        animate();
+        
+        // Update date every minute
+        setInterval(updateDate, 60000);
+    </script>
+</body>
+</html>
